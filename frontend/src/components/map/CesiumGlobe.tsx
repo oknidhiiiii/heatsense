@@ -55,12 +55,13 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const gridDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
   const cityBoundaryDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
+  const cityEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
+  const lastHoveredRef = useRef<string | null>(null);
 
-  // 1. Initialize Cesium Viewer
+  // 1. Initialize Cesium Viewer (runs ONCE on mount)
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
 
-    // Use OpenStreetMap by default
     const baseImagery = ION_TOKEN ? undefined : createImageryProvider(basemap);
 
     const viewer = new Cesium.Viewer(containerRef.current, {
@@ -86,14 +87,58 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       destination: Cesium.Cartesian3.fromDegrees(73.5, 19.2, 850000.0),
     });
 
-    // Custom data sources for city boundaries and temperature heat grid
-    const cityDataSource = new Cesium.CustomDataSource('cityBoundaries');
-    viewer.dataSources.add(cityDataSource);
-    cityBoundaryDataSourceRef.current = cityDataSource;
+    // Custom data sources
+    const cityDs = new Cesium.CustomDataSource('cityBoundaries');
+    viewer.dataSources.add(cityDs);
+    cityBoundaryDataSourceRef.current = cityDs;
 
-    const gridDataSource = new Cesium.CustomDataSource('temperatureGrid');
-    viewer.dataSources.add(gridDataSource);
-    gridDataSourceRef.current = gridDataSource;
+    const gridDs = new Cesium.CustomDataSource('temperatureGrid');
+    viewer.dataSources.add(gridDs);
+    gridDataSourceRef.current = gridDs;
+
+    // Create city border entities ONCE to completely avoid recreation and flickering
+    const entitiesCache: Record<string, Cesium.Entity> = {};
+    CITIES_DATA.forEach((city) => {
+      const flatCoords: number[] = [];
+      const cartesianPoints: Cesium.Cartesian3[] = [];
+
+      city.polygonCoordinates.forEach(([lon, lat]) => {
+        flatCoords.push(lon, lat);
+        cartesianPoints.push(Cesium.Cartesian3.fromDegrees(lon, lat));
+      });
+
+      // 1. Sleek polyline border (pure border, no fill)
+      const borderEntity = cityDs.entities.add({
+        id: `border_${city.id}`,
+        properties: {
+          cityId: city.id,
+          cityName: city.name,
+        },
+        polyline: {
+          positions: cartesianPoints,
+          width: 2.0,
+          material: Cesium.Color.WHITE.withAlpha(0.35),
+          clampToGround: true,
+        },
+      });
+
+      // 2. Invisible hit-test polygon for smooth cursor picking (100% transparent, no visual fill)
+      cityDs.entities.add({
+        id: `hitarea_${city.id}`,
+        properties: {
+          cityId: city.id,
+        },
+        polygon: {
+          hierarchy: Cesium.Cartesian3.fromDegreesArray(flatCoords),
+          material: Cesium.Color.TRANSPARENT,
+          outline: false,
+          height: 0,
+        },
+      });
+
+      entitiesCache[city.id] = borderEntity;
+    });
+    cityEntitiesRef.current = entitiesCache;
 
     // Screen-space event handlers for clicking and hovering
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
@@ -119,24 +164,23 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       onCellSelect(null);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // Mouse move: hover city detection and cursor change
+    // Mouse move: smooth hover detection with strict deduplication (NO flicker)
     handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
       const picked = viewer.scene.pick(movement.endPosition);
+      let hoveredId: string | null = null;
+
       if (Cesium.defined(picked) && picked.id && picked.id.properties) {
         if (picked.id.properties.cityId) {
-          const cId = picked.id.properties.cityId.getValue();
-          onCityHover(cId);
-          viewer.canvas.style.cursor = 'pointer';
-          return;
-        }
-        if (picked.id.properties.cellData) {
-          viewer.canvas.style.cursor = 'crosshair';
-          onCityHover(null);
-          return;
+          hoveredId = picked.id.properties.cityId.getValue();
         }
       }
-      viewer.canvas.style.cursor = 'default';
-      onCityHover(null);
+
+      // Only notify React when hover target ACTUALLY transitions
+      if (hoveredId !== lastHoveredRef.current) {
+        lastHoveredRef.current = hoveredId;
+        onCityHover(hoveredId);
+        viewer.canvas.style.cursor = hoveredId ? 'pointer' : 'default';
+      }
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
     viewerRef.current = viewer;
@@ -150,7 +194,41 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     };
   }, [onCellSelect, onCityHover, onCitySelect]);
 
-  // 1b. Switch imagery provider dynamically without clearing to 0 layers (prevents Cesium Ion token prompt)
+  // 2. Ultra-smooth border update on hover (mutates existing entity properties in place - ZERO recreation, ZERO flicker)
+  useEffect(() => {
+    const cache = cityEntitiesRef.current;
+    if (!cache) return;
+
+    CITIES_DATA.forEach((city) => {
+      const borderEntity = cache[city.id];
+      if (!borderEntity || !borderEntity.polyline) return;
+
+      const isHovered = hoveredCityId === city.id;
+      const isSelected = selectedLocation?.id === city.id;
+
+      if (isHovered) {
+        // High-contrast electric cyan border when hovered
+        borderEntity.polyline.width = new Cesium.ConstantProperty(3.5);
+        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(
+          Cesium.Color.fromCssColorString('#00f0ff')
+        );
+      } else if (isSelected) {
+        // Crisp sky blue border when selected
+        borderEntity.polyline.width = new Cesium.ConstantProperty(2.5);
+        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(
+          Cesium.Color.fromCssColorString('#38bdf8')
+        );
+      } else {
+        // Subtle resting border
+        borderEntity.polyline.width = new Cesium.ConstantProperty(1.5);
+        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(
+          Cesium.Color.WHITE.withAlpha(0.28)
+        );
+      }
+    });
+  }, [hoveredCityId, selectedLocation]);
+
+  // 3. Basemap switching without clearing to 0 layers (prevents Cesium Ion token prompt)
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || ION_TOKEN) return;
@@ -172,81 +250,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     }, 150);
   }, [basemap]);
 
-  // 2. Render city boundary outlines and floating city pins
-  useEffect(() => {
-    const cityDs = cityBoundaryDataSourceRef.current;
-    if (!cityDs) return;
-
-    cityDs.entities.removeAll();
-
-    CITIES_DATA.forEach((city) => {
-      const isHovered = hoveredCityId === city.id;
-      const isSelected = selectedLocation?.id === city.id;
-
-      const flatCoords: number[] = [];
-      city.polygonCoordinates.forEach(([lon, lat]) => {
-        flatCoords.push(lon, lat);
-      });
-
-      // Outline and fill styling
-      const outlineColor = isHovered
-        ? Cesium.Color.fromCssColorString('#00f0ff') // Glowing Electric Cyan on hover
-        : isSelected
-        ? Cesium.Color.fromCssColorString('#f59e0b') // Bright Amber when selected
-        : Cesium.Color.fromCssColorString('#38bdf8').withAlpha(0.65); // Clear subtle boundary
-
-      const outlineWidth = isHovered ? 4 : isSelected ? 3 : 2;
-
-      const fillColor = isHovered
-        ? Cesium.Color.fromCssColorString('#00f0ff').withAlpha(0.22)
-        : isSelected
-        ? Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.12)
-        : Cesium.Color.fromCssColorString('#0284c7').withAlpha(0.04);
-
-      // City boundary polygon
-      cityDs.entities.add({
-        id: `boundary_${city.id}`,
-        properties: {
-          cityId: city.id,
-          cityName: city.name,
-        },
-        polygon: {
-          hierarchy: Cesium.Cartesian3.fromDegreesArray(flatCoords),
-          material: fillColor,
-          outline: true,
-          outlineColor: outlineColor,
-          outlineWidth: outlineWidth,
-          height: 0,
-        },
-      });
-
-      // Floating city pin / badge
-      cityDs.entities.add({
-        id: `label_${city.id}`,
-        properties: {
-          cityId: city.id,
-        },
-        position: Cesium.Cartesian3.fromDegrees(city.longitude, city.latitude, 200),
-        label: {
-          text: isHovered ? `📍 ${city.name} (Click to Focus)` : `📍 ${city.name}`,
-          font: isHovered ? 'bold 15px Outfit, sans-serif' : '13px Outfit, sans-serif',
-          fillColor: isHovered ? Cesium.Color.WHITE : Cesium.Color.fromCssColorString('#e2e8f0'),
-          outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 3,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          backgroundColor: isHovered
-            ? Cesium.Color.fromCssColorString('#0f172a').withAlpha(0.92)
-            : Cesium.Color.fromCssColorString('#1e293b').withAlpha(0.7),
-          showBackground: true,
-          backgroundPadding: new Cesium.Cartesian2(8, 4),
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        },
-      });
-    });
-  }, [hoveredCityId, selectedLocation]);
-
-  // 3. Camera flight to selected location
+  // 4. Camera flight to selected location
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
@@ -258,8 +262,8 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
 
     if (selectedLocation && selectedLocation.bbox) {
       const [minLat, minLon, maxLat, maxLon] = selectedLocation.bbox;
-      const padLat = Math.max(0.05, (maxLat - minLat) * 0.2);
-      const padLon = Math.max(0.05, (maxLon - minLon) * 0.2);
+      const padLat = Math.max(0.04, (maxLat - minLat) * 0.18);
+      const padLon = Math.max(0.04, (maxLon - minLon) * 0.18);
 
       const rect = Cesium.Rectangle.fromDegrees(
         minLon - padLon,
@@ -282,7 +286,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         duration,
       });
     } else {
-      // Return to overview
+      // Overview
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(73.5, 19.2, 850000.0),
         duration,
@@ -290,7 +294,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     }
   }, [selectedLocation]);
 
-  // 4. Render city-wise heatmaps (filters ocean cells and applies dynamic thermal normalization)
+  // 5. Render city-wise heatmaps (filters ocean cells and applies dynamic thermal normalization)
   useEffect(() => {
     const dataSource = gridDataSourceRef.current;
     if (!dataSource) return;
@@ -303,14 +307,13 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
 
     // A. Filter out offshore open ocean cells
     let activeCells = gridData.cells.filter((cell) => {
-      // Exclude cells situated far out in the Arabian Sea
       if (cell.latitude < 19.35 && cell.longitude < 72.75) {
         return false;
       }
       return true;
     });
 
-    // B. If a city is selected, focus heat grid tightly on that city's urban domain
+    // B. Focus heat grid on city domains
     if (selectedLocation && selectedLocation.bbox) {
       const [minLat, minLon, maxLat, maxLon] = selectedLocation.bbox;
       activeCells = activeCells.filter(
@@ -321,7 +324,6 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
           c.longitude <= maxLon + 0.05
       );
     } else {
-      // In overview, focus cells around the 4 pilot urban clusters (Mumbai, Pune, Thane, Nashik)
       activeCells = activeCells.filter((c) =>
         CITIES_DATA.some((city) => {
           const [cMinLat, cMinLon, cMaxLat, cMaxLon] = city.bbox;
@@ -335,7 +337,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       );
     }
 
-    // C. Dynamic temperature normalization across visible cells
+    // C. Dynamic temperature normalization
     const temps = activeCells
       .map((c) => c.value)
       .filter((v): v is number => v !== null);
@@ -349,10 +351,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       const [minLat, minLon, maxLat, maxLon] = cell.bounds;
       const hexColor =
         cell.value !== null ? getTemperatureHex(cell.value, minT, maxT) : '#4a5568';
-      const alpha = isSelected(cell) ? 0.95 : 0.72;
+      const alpha = isSelected(cell) ? 0.95 : 0.70;
       const outlineColor = isSelected(cell)
         ? Cesium.Color.WHITE
-        : Cesium.Color.BLACK.withAlpha(0.25);
+        : Cesium.Color.BLACK.withAlpha(0.2);
 
       dataSource.entities.add({
         id: cell.id,

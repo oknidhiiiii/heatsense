@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onMouseLeave={() => onCityHover(null)}
                 >
                   <div className="loc-name-col">
-                    <span className="loc-name">📍 {loc.name}</span>
+                    <span className="loc-name">{loc.name}</span>
                     <span className="loc-admin">
                       {[loc.admin1, loc.country_code].filter(Boolean).join(', ')}
                     </span>
@@ -151,7 +151,6 @@ export const Header: React.FC<HeaderProps> = ({
               onSelectLocation(null);
             }}
             onMouseEnter={() => onCityHover(null)}
-            title="View all city heat clusters across the pilot region"
           >
             All Cities
           </button>
@@ -177,9 +176,8 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               onMouseEnter={() => onCityHover(city.id)}
               onMouseLeave={() => onCityHover(null)}
-              title={`${city.name}: ${city.description} (Hover to outline on globe)`}
             >
-              📍 {city.name}
+              {city.name}
             </button>
           ))}
         </div>
