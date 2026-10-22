@@ -3,6 +3,7 @@
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
+from starlette.concurrency import run_in_threadpool
 from heatsense_api.config import settings
 from heatsense_api.repositories.weather_grid import WeatherGridRepository
 from heatsense_api.schemas.weather import (
@@ -68,7 +69,9 @@ async def get_history(
         return cached
 
     try:
-        res = weather_repo.get_history(lat, lon, start, end, interval=interval)
+        res = await run_in_threadpool(
+            weather_repo.get_history, lat, lon, start, end, interval=interval
+        )
         cache.set(cache_key, res, ttl_seconds=settings.cache_ttl_seconds)
         return res
     except Exception as e:
@@ -105,7 +108,9 @@ async def get_prediction(
         return cached
 
     try:
-        res = pred_service.predict_point(lat=lat, lon=lon, horizon_hours=horizon_hours)
+        res = await run_in_threadpool(
+            pred_service.predict_point, lat=lat, lon=lon, horizon_hours=horizon_hours
+        )
         cache.set(cache_key, res, ttl_seconds=settings.cache_ttl_seconds)
         return res
     except ValueError as ve:
@@ -141,7 +146,9 @@ async def get_map_grid(
 
     if layer == "historical":
         try:
-            res = weather_repo.get_grid_slice(region_id=region_id, layer=layer, bbox=parsed_bbox)
+            res = await run_in_threadpool(
+                weather_repo.get_grid_slice, region_id=region_id, layer=layer, bbox=parsed_bbox
+            )
             cache.set(cache_key, res, ttl_seconds=settings.cache_ttl_seconds)
             return res
         except Exception as e:
@@ -160,7 +167,9 @@ async def get_map_grid(
 
     h_hours = 24 if layer == "forecast24" else 48
     try:
-        res = pred_service.predict_grid_layer(region_id=region_id, horizon_hours=h_hours, bbox=parsed_bbox)
+        res = await run_in_threadpool(
+            pred_service.predict_grid_layer, region_id=region_id, horizon_hours=h_hours, bbox=parsed_bbox
+        )
         cache.set(cache_key, res, ttl_seconds=settings.cache_ttl_seconds)
         return res
     except Exception as e:

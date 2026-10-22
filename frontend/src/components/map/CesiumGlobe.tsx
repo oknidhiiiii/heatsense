@@ -2,8 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { GridCell, LocationItem, MapGridResponse } from '../../types/api';
-import { getTemperatureRgb } from '../../utils/colorScale';
-import { CITIES_DATA, CityData, findCityById, getCityAtLocation } from '../../utils/cityBoundaries';
+import {
+  CITIES_DATA,
+  CityData,
+  findCityById,
+  getCityAtLocation,
+  loadCityBoundariesGeoJSON,
+} from '../../utils/cityBoundaries';
+import { generateContinuousHeatmapAsync } from '../../utils/heatmapGenerator';
 
 // Set Cesium Ion token if configured
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN;
@@ -15,7 +21,7 @@ function createDarkBaseProvider(): Cesium.ImageryProvider {
   return new Cesium.UrlTemplateImageryProvider({
     url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     maximumLevel: 16,
-    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray Base)'),
+    credit: new Cesium.Credit('Tiles (c) Esri (World Dark Gray Base)'),
   });
 }
 
@@ -23,7 +29,7 @@ function createDarkReferenceProvider(): Cesium.ImageryProvider {
   return new Cesium.UrlTemplateImageryProvider({
     url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
     maximumLevel: 16,
-    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray Reference)'),
+    credit: new Cesium.Credit('Tiles (c) Esri (World Dark Gray Reference)'),
   });
 }
 
@@ -32,7 +38,7 @@ function createOsmProvider(): Cesium.ImageryProvider {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
     maximumLevel: 19,
-    credit: new Cesium.Credit('© OpenStreetMap contributors'),
+    credit: new Cesium.Credit('(c) OpenStreetMap contributors'),
   });
 }
 
@@ -93,142 +99,6 @@ function flyToCity(viewer: Cesium.Viewer, city: CityData) {
   }
 }
 
-function generateContinuousHeatmapCanvas(
-  gridData: MapGridResponse,
-  targetBbox: [number, number, number, number],
-  boundaryPolygons: [number, number][][]
-): HTMLCanvasElement | null {
-  const [minLat, minLon, maxLat, maxLon] = targetBbox;
-  if (maxLat <= minLat || maxLon <= minLon) return null;
-
-  const validCells = gridData.cells.filter(
-    (c): c is GridCell & { value: number } => c.value !== null && !isNaN(c.value)
-  );
-  if (validCells.length === 0) return null;
-
-  const temps = validCells.map((c) => c.value);
-  const minT = Math.min(...temps);
-  const maxT = Math.max(...temps);
-
-  // 1. Determine grid spatial bounds
-  const cellLats = validCells.map((c) => c.latitude);
-  const cellLons = validCells.map((c) => c.longitude);
-  const gMinLat = Math.min(...cellLats);
-  const gMaxLat = Math.max(...cellLats);
-  const gMinLon = Math.min(...cellLons);
-  const gMaxLon = Math.max(...cellLons);
-
-  const res = gridData.grid_definition?.resolution_deg || 0.1;
-  const cols = Math.max(2, Math.min(64, Math.round((gMaxLon - gMinLon) / res) + 1));
-  const rows = Math.max(2, Math.min(64, Math.round((gMaxLat - gMinLat) / res) + 1));
-
-  // 2. Offscreen grid canvas to capture raw thermal points
-  const coarseCanvas = document.createElement('canvas');
-  coarseCanvas.width = cols;
-  coarseCanvas.height = rows;
-  const coarseCtx = coarseCanvas.getContext('2d');
-  if (!coarseCtx) return null;
-
-  const imgData = coarseCtx.createImageData(cols, rows);
-  const data = imgData.data;
-  const gridVals = new Float32Array(cols * rows).fill(NaN);
-
-  for (const cell of validCells) {
-    const c = Math.round(((cell.longitude - gMinLon) / (gMaxLon - gMinLon || 1)) * (cols - 1));
-    const r = Math.round(((gMaxLat - cell.latitude) / (gMaxLat - gMinLat || 1)) * (rows - 1));
-    if (c >= 0 && c < cols && r >= 0 && r < rows) {
-      gridVals[r * cols + c] = cell.value;
-    }
-  }
-
-  // Nearest-neighbor fill for any unassigned pixels
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c;
-      let val = gridVals[idx];
-      if (isNaN(val)) {
-        let bestDist = Infinity;
-        let bestVal = (minT + maxT) / 2;
-        for (let dr = -3; dr <= 3; dr++) {
-          for (let dc = -3; dc <= 3; dc++) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-              const nVal = gridVals[nr * cols + nc];
-              if (!isNaN(nVal)) {
-                const dist = dr * dr + dc * dc;
-                if (dist < bestDist) {
-                  bestDist = dist;
-                  bestVal = nVal;
-                }
-              }
-            }
-          }
-        }
-        val = bestVal;
-      }
-
-      const [red, green, blue] = getTemperatureRgb(val, minT, maxT);
-      const pIdx = idx * 4;
-      data[pIdx] = red;
-      data[pIdx + 1] = green;
-      data[pIdx + 2] = blue;
-      data[pIdx + 3] = 230;
-    }
-  }
-
-  coarseCtx.putImageData(imgData, 0, 0);
-
-  // 3. Main canvas with hardware bilinear upscaling and stencil boundary clipping
-  const mainCanvas = document.createElement('canvas');
-  const width = 512;
-  const height = 512;
-  mainCanvas.width = width;
-  mainCanvas.height = height;
-  const ctx = mainCanvas.getContext('2d');
-  if (!ctx) return null;
-
-  ctx.save();
-
-  // Draw clipping stencil path
-  ctx.beginPath();
-  let hasValidPoly = false;
-  for (const poly of boundaryPolygons) {
-    if (!poly || poly.length < 3) continue;
-    for (let i = 0; i < poly.length; i++) {
-      const [lon, lat] = poly[i];
-      const x = ((lon - minLon) / (maxLon - minLon)) * width;
-      const y = ((maxLat - lat) / (maxLat - minLat)) * height;
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    }
-    ctx.closePath();
-    hasValidPoly = true;
-  }
-
-  if (hasValidPoly) {
-    ctx.clip();
-  }
-
-  // Draw bilinear coarse grid scaled to geographic coordinates
-  const gx = ((gMinLon - minLon) / (maxLon - minLon)) * width;
-  const gy = ((maxLat - gMaxLat) / (maxLat - minLat)) * height;
-  const gw = ((gMaxLon - gMinLon) / (maxLon - minLon)) * width;
-  const gh = ((gMaxLat - gMinLat) / (maxLat - minLat)) * height;
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.filter = 'blur(4px)';
-  ctx.drawImage(coarseCanvas, gx, gy, gw, gh);
-
-  ctx.restore();
-
-  return mainCanvas;
-}
-
 interface CesiumGlobeProps {
   selectedLocation: LocationItem | null;
   gridData: MapGridResponse | null;
@@ -270,6 +140,9 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   // 1. Initialize Cesium Viewer (runs ONCE on mount)
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
+
+    // Prefetch high-resolution GeoJSON boundaries in background
+    loadCityBoundariesGeoJSON().catch(() => {});
 
     const viewer = new Cesium.Viewer(containerRef.current, {
       terrainProvider: new Cesium.EllipsoidTerrainProvider(),
@@ -315,7 +188,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     viewer.dataSources.add(gridDs);
     gridDataSourceRef.current = gridDs;
 
-    // Create city border and label entities ONCE to completely avoid recreation and flickering
+    // Create city border and label entities with Tiered Spatial Clustering
     const borderEntitiesCache: Record<string, Cesium.Entity> = {};
     const labelEntitiesCache: Record<string, Cesium.Entity> = {};
     const isInitialDark = basemap === 'dark';
@@ -326,6 +199,18 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       city.polygonCoordinates.forEach(([lon, lat]) => {
         cartesianPoints.push(Cesium.Cartesian3.fromDegrees(lon, lat));
       });
+
+      // Tiered spatial clustering visibility thresholds
+      const isTier1 = city.tier === 1;
+      const isTier2 = city.tier === 2;
+      const maxMarkerDist = isTier1 ? 5500000.0 : isTier2 ? 2000000.0 : 850000.0;
+      const maxLabelDist = isTier1 ? 4000000.0 : isTier2 ? 1600000.0 : 650000.0;
+      const fontStr = isTier1
+        ? '600 12.5px -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif'
+        : isTier2
+        ? '600 11.5px -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif'
+        : '500 10.5px -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif';
+      const pointSize = isTier1 ? 5.5 : isTier2 ? 4.5 : 3.5;
 
       // 1. Sleek polyline border
       const borderEntity = cityDs.entities.add({
@@ -345,7 +230,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       });
       borderEntitiesCache[city.id] = borderEntity;
 
-      // 2. High-contrast city name label and anchor marker
+      // 2. High-contrast tiered city label and anchor marker
       const labelEntity = cityDs.entities.add({
         id: `label_${city.id}`,
         position: Cesium.Cartesian3.fromDegrees(city.longitude, city.latitude),
@@ -354,7 +239,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
           cityName: city.name,
         },
         point: {
-          pixelSize: 4.5,
+          pixelSize: pointSize,
           color: isInitialDark
             ? Cesium.Color.WHITE.withAlpha(0.85)
             : Cesium.Color.BLACK.withAlpha(0.75),
@@ -363,11 +248,11 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
             : Cesium.Color.WHITE.withAlpha(0.8),
           outlineWidth: 1.5,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 5000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, maxMarkerDist),
         },
         label: {
           text: city.name,
-          font: '600 12px -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif',
+          font: fontStr,
           fillColor: isInitialDark ? Cesium.Color.WHITE : Cesium.Color.BLACK,
           outlineColor: isInitialDark
             ? Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.9)')
@@ -377,7 +262,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -7),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 3500000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, maxLabelDist),
           scale: 1.0,
         },
       });
@@ -449,21 +334,30 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       onCellSelect(null);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // Mouse move: smooth hover detection anywhere inside city polygon area (NO flicker)
-    handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
+    // Animation Frame Throttling for Ray-Casting & Hover Detection
+    let pendingHoverPos: Cesium.Cartesian2 | null = null;
+    let hoverRafId: number | null = null;
+
+    const processHoverThrottled = () => {
+      hoverRafId = null;
+      if (!pendingHoverPos || viewer.isDestroyed()) return;
+
+      const pos = pendingHoverPos;
+      pendingHoverPos = null;
+
       let hoveredId: string | null = null;
 
-      // 1. Direct entity pick (e.g. cursor directly over city label or point)
-      const picked = viewer.scene.pick(movement.endPosition);
+      // Direct entity pick (cursor directly over city label or point)
+      const picked = viewer.scene.pick(pos);
       if (Cesium.defined(picked) && picked.id && picked.id.properties) {
         if (picked.id.properties.cityId) {
           hoveredId = picked.id.properties.cityId.getValue();
         }
       }
 
-      // 2. Check if cursor is anywhere inside the city polygon area
+      // Check if cursor is inside city polygon area
       if (!hoveredId) {
-        const coords = getCartographicFromScreen(viewer, movement.endPosition);
+        const coords = getCartographicFromScreen(viewer, pos);
         if (coords) {
           const city = getCityAtLocation(coords.lat, coords.lon);
           if (city) {
@@ -472,17 +366,27 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         }
       }
 
-      // Only notify React when hover target transitions
+      // Notify React only when hover target transitions
       if (hoveredId !== lastHoveredRef.current) {
         lastHoveredRef.current = hoveredId;
         onCityHover(hoveredId);
         viewer.canvas.style.cursor = hoveredId ? 'pointer' : 'default';
+      }
+    };
+
+    handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
+      pendingHoverPos = movement.endPosition;
+      if (hoverRafId === null) {
+        hoverRafId = requestAnimationFrame(processHoverThrottled);
       }
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
     viewerRef.current = viewer;
 
     return () => {
+      if (hoverRafId !== null) {
+        cancelAnimationFrame(hoverRafId);
+      }
       handler.destroy();
       if (!viewer.isDestroyed()) {
         viewer.destroy();
@@ -491,7 +395,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     };
   }, [onCellSelect, onCityHover, onCitySelect]);
 
-  // 2. Ultra-smooth border & label update on hover (white in dark mode, black in light mode)
+  // 2. High-contrast border & label update on hover (white in dark mode, black in light mode)
   useEffect(() => {
     const borders = cityBorderEntitiesRef.current;
     const labels = cityLabelEntitiesRef.current;
@@ -568,7 +472,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
                 : Cesium.Color.fromCssColorString('#0284c7')
             );
           } else {
-            labelEntity.point.pixelSize = new Cesium.ConstantProperty(4.5);
+            const isTier1 = city.tier === 1;
+            const isTier2 = city.tier === 2;
+            const defaultSize = isTier1 ? 5.5 : isTier2 ? 4.5 : 3.5;
+            labelEntity.point.pixelSize = new Cesium.ConstantProperty(defaultSize);
             labelEntity.point.color = new Cesium.ConstantProperty(
               isDarkMode ? Cesium.Color.WHITE.withAlpha(0.85) : Cesium.Color.BLACK.withAlpha(0.75)
             );
@@ -666,18 +573,16 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     }
   }, [selectedLocation]);
 
-  // 5A. Render continuous thermal heatmap strictly clipped to city or state boundary
+  // 5A. Render continuous thermal heatmap with Web Worker, Adaptive LOD, LRU Cache, and Layer Cross-Fade
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
 
-    // Remove previous heatmap layer
-    if (heatImageryLayerRef.current) {
-      viewer.imageryLayers.remove(heatImageryLayerRef.current);
-      heatImageryLayerRef.current = null;
-    }
-
     if (!gridData || !gridData.cells || gridData.cells.length === 0) {
+      if (heatImageryLayerRef.current) {
+        viewer.imageryLayers.remove(heatImageryLayerRef.current);
+        heatImageryLayerRef.current = null;
+      }
       return;
     }
 
@@ -709,28 +614,73 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       boundaryPolygons = pilotCities.map((c) => c.polygonCoordinates);
     }
 
-    const canvas = generateContinuousHeatmapCanvas(gridData, targetBbox, boundaryPolygons);
-    if (!canvas) return;
+    let isSubscribed = true;
+    const cameraHeight = viewer.camera.positionCartographic?.height || 800000.0;
+    const regionId = selectedLocation ? selectedLocation.id : 'overview_MH';
+    const validAt = gridData.valid_at || 'latest';
+    const layer = gridData.layer || 'temp';
 
-    const [minLat, minLon, maxLat, maxLon] = targetBbox;
-    const rectangle = Cesium.Rectangle.fromDegrees(minLon, minLat, maxLon, maxLat);
+    generateContinuousHeatmapAsync(gridData, targetBbox, boundaryPolygons, cameraHeight, {
+      regionId,
+      layer,
+      validAt,
+      theme: basemap,
+    }).then((raster) => {
+      if (!isSubscribed || !raster || viewer.isDestroyed()) return;
 
-    const heatProvider = new Cesium.SingleTileImageryProvider({
-      url: canvas.toDataURL(),
-      rectangle,
-      tileWidth: 512,
-      tileHeight: 512,
+      const [minLat, minLon, maxLat, maxLon] = targetBbox;
+      const rectangle = Cesium.Rectangle.fromDegrees(minLon, minLat, maxLon, maxLat);
+
+      const heatProvider = new Cesium.SingleTileImageryProvider({
+        url: raster.dataUrl,
+        rectangle,
+        tileWidth: raster.width,
+        tileHeight: raster.height,
+      });
+
+      const newHeatLayer = viewer.imageryLayers.addImageryProvider(heatProvider);
+      const oldHeatLayer = heatImageryLayerRef.current;
+      heatImageryLayerRef.current = newHeatLayer;
+
+      // Raise reference layer above heatmap so city labels and roads remain sharp
+      if (referenceLayerRef.current) {
+        viewer.imageryLayers.raiseToTop(referenceLayerRef.current);
+      }
+
+      // Smooth 250ms Layer Cross-Fade Transition
+      const startTime = performance.now();
+      const crossFadeDuration = 250;
+      const targetAlpha = 0.82;
+      newHeatLayer.alpha = 0.0;
+
+      const animateCrossFade = (currentTime: number) => {
+        if (viewer.isDestroyed()) return;
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(1.0, elapsed / crossFadeDuration);
+        const ease = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+
+        newHeatLayer.alpha = ease * targetAlpha;
+        if (oldHeatLayer) {
+          oldHeatLayer.alpha = (1.0 - ease) * targetAlpha;
+        }
+
+        if (progress < 1.0) {
+          requestAnimationFrame(animateCrossFade);
+        } else {
+          if (oldHeatLayer && !viewer.isDestroyed()) {
+            viewer.imageryLayers.remove(oldHeatLayer);
+          }
+          newHeatLayer.alpha = targetAlpha;
+        }
+      };
+
+      requestAnimationFrame(animateCrossFade);
     });
 
-    const heatLayer = viewer.imageryLayers.addImageryProvider(heatProvider);
-    heatLayer.alpha = 0.82;
-    heatImageryLayerRef.current = heatLayer;
-
-    // Raise reference layer to the top so city and road labels stay visible on top of the heatmap
-    if (referenceLayerRef.current) {
-      viewer.imageryLayers.raiseToTop(referenceLayerRef.current);
-    }
-  }, [gridData, selectedLocation]);
+    return () => {
+      isSubscribed = false;
+    };
+  }, [gridData, selectedLocation, basemap]);
 
   // 5B. Render inspected cell reticle outline
   useEffect(() => {

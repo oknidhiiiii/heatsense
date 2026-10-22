@@ -1,25 +1,53 @@
-FROM python:3.12-slim
+# Multi-stage production build for HeatSense Backend
+# Stage 1: Dependency resolution and virtual environment compilation
+FROM python:3.12-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Install system dependencies
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast dependency management
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# Copy project manifests
 COPY pyproject.toml .python-version ./
 
-# Install dependencies
-RUN uv pip install --system -e .
+RUN uv venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install -e .
 
-# Copy source code
-COPY backend/ backend/
-COPY ml/ ml/
+# Stage 2: Hardened, non-root production runtime
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+# Create non-root system user and group
+RUN groupadd -g 10001 heatsense && \
+    useradd -u 10001 -g heatsense -m -s /bin/bash heatsense
+
+COPY --from=builder /opt/venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project files with proper non-root ownership
+COPY --chown=heatsense:heatsense backend/ backend/
+COPY --chown=heatsense:heatsense ml/ ml/
+COPY --chown=heatsense:heatsense data/ data/
+COPY --chown=heatsense:heatsense artifacts/ artifacts/
+COPY --chown=heatsense:heatsense pyproject.toml .python-version ./
+
+RUN pip install --no-deps -e .
+
+USER heatsense
 
 EXPOSE 8000
 
-CMD ["uvicorn", "heatsense_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+CMD ["uvicorn", "heatsense_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

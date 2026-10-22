@@ -6,8 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from heatsense_api.middleware.etag import ETagMiddleware
 
 from heatsense_api.api.v1.health import router as health_router
 from heatsense_api.api.v1.locations import router as locations_router
@@ -56,6 +59,12 @@ def create_app() -> FastAPI:
         description="Predictive Analytics for Heat Risk API (India Focus with Global Architecture)",
         lifespan=lifespan,
     )
+
+    # ETag and 304 conditional caching
+    app.add_middleware(ETagMiddleware)
+
+    # Dynamic payload compression for responses >= 1000 bytes
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # CORS configuration
     app.add_middleware(
