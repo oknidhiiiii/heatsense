@@ -83,7 +83,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
 
     // Initial camera position framing Maharashtra pilot
     viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(73.5, 19.2, 850000.0),
+      destination: Cesium.Cartesian3.fromDegrees(76.2, 19.3, 1350000.0),
     });
 
     // Custom data sources
@@ -287,7 +287,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     } else {
       // Overview
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(73.5, 19.2, 850000.0),
+        destination: Cesium.Cartesian3.fromDegrees(76.2, 19.3, 1350000.0),
         duration,
       });
     }

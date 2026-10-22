@@ -38,6 +38,25 @@ def test_location_search_mumbai(client):
     assert item["bbox"] is not None
 
 
+def test_location_search_maharashtra_cities(client):
+    """Verify search finds regional Maharashtra cities and alias lookups."""
+    # Search for Nagpur
+    res_nagpur = client.get("/api/v1/locations/search?q=Nagpur&limit=5")
+    assert res_nagpur.status_code == 200
+    items_nagpur = res_nagpur.json()["items"]
+    assert len(items_nagpur) >= 1
+    assert items_nagpur[0]["name"] == "Nagpur"
+    assert items_nagpur[0]["coverage_status"] == "supported"
+
+    # Search for Aurangabad (resolves Chhatrapati Sambhajinagar via admin2 alias)
+    res_aurangabad = client.get("/api/v1/locations/search?q=Aurangabad&limit=5")
+    assert res_aurangabad.status_code == 200
+    items_aurangabad = res_aurangabad.json()["items"]
+    assert len(items_aurangabad) >= 1
+    assert items_aurangabad[0]["name"] == "Chhatrapati Sambhajinagar"
+    assert items_aurangabad[0]["coverage_status"] == "supported"
+
+
 def test_location_search_unsupported_city(client):
     """Verify unsupported cities are marked as unsupported."""
     response = client.get("/api/v1/locations/search?q=Delhi")
