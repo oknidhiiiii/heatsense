@@ -23,6 +23,7 @@ export const App: React.FC = () => {
   const [isLoadingGrid, setIsLoadingGrid] = useState(false);
   const [isMetricsOpen, setIsMetricsOpen] = useState(false);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [basemap, setBasemap] = useState<'osm' | 'dark'>('osm');
 
   // Check backend health on startup
   useEffect(() => {
@@ -77,6 +78,8 @@ export const App: React.FC = () => {
         activeLayer={activeLayer}
         onSelectLayer={setActiveLayer}
         onOpenMetrics={() => setIsMetricsOpen(true)}
+        basemap={basemap}
+        onToggleBasemap={() => setBasemap((b) => (b === 'osm' ? 'dark' : 'osm'))}
       />
 
       <main className="main-content">
@@ -86,6 +89,7 @@ export const App: React.FC = () => {
           selectedCell={selectedCell}
           onCellSelect={handleCellSelect}
           isLoading={isLoadingGrid}
+          basemap={basemap}
         />
 
         <Legend layer={activeLayer} gridData={gridData} />

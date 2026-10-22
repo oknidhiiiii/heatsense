@@ -10,12 +10,30 @@ if (ION_TOKEN) {
   Cesium.Ion.defaultAccessToken = ION_TOKEN;
 }
 
+function createImageryProvider(type: 'osm' | 'dark'): Cesium.ImageryProvider {
+  if (type === 'osm') {
+    return new Cesium.UrlTemplateImageryProvider({
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      maximumLevel: 19,
+      credit: new Cesium.Credit('© OpenStreetMap contributors'),
+    });
+  }
+  return new Cesium.UrlTemplateImageryProvider({
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    maximumLevel: 19,
+    credit: new Cesium.Credit('© OpenStreetMap contributors, © CARTO'),
+  });
+}
+
 interface CesiumGlobeProps {
   selectedLocation: LocationItem | null;
   gridData: MapGridResponse | null;
   selectedCell: GridCell | null;
   onCellSelect: (cell: GridCell | null) => void;
   isLoading: boolean;
+  basemap?: 'osm' | 'dark';
 }
 
 export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
@@ -24,6 +42,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   selectedCell,
   onCellSelect,
   isLoading,
+  basemap = 'osm',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -33,15 +52,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
 
-    // Use token-free Carto Dark Matter imagery provider by default
+    // Use OpenStreetMap by default
     const baseImagery = ION_TOKEN
       ? undefined
-      : new Cesium.UrlTemplateImageryProvider({
-          url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          subdomains: ['a', 'b', 'c', 'd'],
-          maximumLevel: 19,
-          credit: new Cesium.Credit('© OpenStreetMap contributors, © CARTO'),
-        });
+      : createImageryProvider(basemap);
 
     const viewer = new Cesium.Viewer(containerRef.current, {
       baseLayer: baseImagery ? new Cesium.ImageryLayer(baseImagery) : undefined,
@@ -93,6 +107,16 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       viewerRef.current = null;
     };
   }, [onCellSelect]);
+
+  // 1b. Switch imagery provider dynamically when basemap changes
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || ION_TOKEN) return;
+
+    viewer.imageryLayers.removeAll();
+    const provider = createImageryProvider(basemap);
+    viewer.imageryLayers.add(new Cesium.ImageryLayer(provider));
+  }, [basemap]);
 
   // 2. Camera flight to selected location
   useEffect(() => {

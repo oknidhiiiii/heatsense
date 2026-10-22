@@ -212,6 +212,27 @@
   font-weight: 600;
 }
 
+.basemap-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #21262d;
+  border: 1px solid #30363d;
+  color: #3fb950;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.basemap-toggle-btn:hover {
+  background-color: #30363d;
+  color: #56d364;
+  border-color: #3fb950;
+}
+
 .metrics-btn {
   display: flex;
   align-items: center;

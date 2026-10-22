@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, RotateCcw, BarChart2 } from 'lucide-react';
+import { Search, RotateCcw, BarChart2, Map } from 'lucide-react';
 import { LocationItem, LayerType, HealthResponse } from '../../types/api';
 import { api } from '../../services/api';
 
@@ -10,6 +10,8 @@ interface HeaderProps {
   activeLayer: LayerType;
   onSelectLayer: (layer: LayerType) => void;
   onOpenMetrics: () => void;
+  basemap: 'osm' | 'dark';
+  onToggleBasemap: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeLayer,
   onSelectLayer,
   onOpenMetrics,
+  basemap,
+  onToggleBasemap,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<LocationItem[]>([]);
@@ -151,6 +155,15 @@ export const Header: React.FC<HeaderProps> = ({
             Forecast +48h
           </button>
         </div>
+
+        <button
+          className="basemap-toggle-btn"
+          onClick={onToggleBasemap}
+          title={`Switch basemap (current: ${basemap === 'osm' ? 'OpenStreetMap Standard' : 'Carto Dark'})`}
+        >
+          <Map size={15} />
+          <span>{basemap === 'osm' ? 'OSM Standard' : 'OSM Dark'}</span>
+        </button>
 
         <button className="metrics-btn" onClick={onOpenMetrics} title="View Model Card & Evaluation Metrics">
           <BarChart2 size={16} />
