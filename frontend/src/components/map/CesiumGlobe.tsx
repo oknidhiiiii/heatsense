@@ -11,20 +11,28 @@ if (ION_TOKEN) {
   Cesium.Ion.defaultAccessToken = ION_TOKEN;
 }
 
-function createImageryProvider(type: 'osm' | 'dark'): Cesium.ImageryProvider {
-  if (type === 'osm') {
-    return new Cesium.UrlTemplateImageryProvider({
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      subdomains: ['a', 'b', 'c'],
-      maximumLevel: 19,
-      credit: new Cesium.Credit('© OpenStreetMap contributors'),
-    });
-  }
+function createDarkBaseProvider(): Cesium.ImageryProvider {
   return new Cesium.UrlTemplateImageryProvider({
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
+    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maximumLevel: 16,
+    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray Base)'),
+  });
+}
+
+function createDarkReferenceProvider(): Cesium.ImageryProvider {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    maximumLevel: 16,
+    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray Reference)'),
+  });
+}
+
+function createOsmProvider(): Cesium.ImageryProvider {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
     maximumLevel: 19,
-    credit: new Cesium.Credit('© CARTO, © OpenStreetMap contributors'),
+    credit: new Cesium.Credit('© OpenStreetMap contributors'),
   });
 }
 
@@ -252,6 +260,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   const cityLabelEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
   const heatImageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const basemapLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+  const referenceLayerRef = useRef<Cesium.ImageryLayer | null>(null);
 
   const lastHoveredRef = useRef<string | null>(null);
   const lastFlownLocationIdRef = useRef<string | null>(null);
@@ -262,10 +271,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
 
-    const baseImagery = ION_TOKEN ? undefined : createImageryProvider(basemap);
-
     const viewer = new Cesium.Viewer(containerRef.current, {
-      baseLayer: baseImagery ? new Cesium.ImageryLayer(baseImagery) : undefined,
       terrainProvider: new Cesium.EllipsoidTerrainProvider(),
       animation: false,
       timeline: false,
@@ -279,8 +285,16 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       fullscreenButton: false,
     });
 
-    if (viewer.imageryLayers.length > 0) {
-      basemapLayerRef.current = viewer.imageryLayers.get(0);
+    if (!ION_TOKEN) {
+      if (basemap === 'dark') {
+        const baseLayer = viewer.imageryLayers.addImageryProvider(createDarkBaseProvider());
+        basemapLayerRef.current = baseLayer;
+        const refLayer = viewer.imageryLayers.addImageryProvider(createDarkReferenceProvider());
+        referenceLayerRef.current = refLayer;
+      } else {
+        const baseLayer = viewer.imageryLayers.addImageryProvider(createOsmProvider());
+        basemapLayerRef.current = baseLayer;
+      }
     }
 
     viewer.scene.globe.enableLighting = false;
@@ -569,14 +583,38 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     const viewer = viewerRef.current;
     if (!viewer || ION_TOKEN) return;
 
-    const newProvider = createImageryProvider(basemap);
-    const newLayer = viewer.imageryLayers.addImageryProvider(newProvider, 0);
+    if (basemap === 'dark') {
+      const newBaseProvider = createDarkBaseProvider();
+      const newBaseLayer = viewer.imageryLayers.addImageryProvider(newBaseProvider, 0);
 
-    const oldLayer = basemapLayerRef.current;
-    if (oldLayer && oldLayer !== newLayer) {
-      viewer.imageryLayers.remove(oldLayer);
+      const oldBase = basemapLayerRef.current;
+      if (oldBase && oldBase !== newBaseLayer) {
+        viewer.imageryLayers.remove(oldBase);
+      }
+      basemapLayerRef.current = newBaseLayer;
+
+      // Add dark reference layer for city and road labels
+      if (!referenceLayerRef.current) {
+        const refProvider = createDarkReferenceProvider();
+        const refLayer = viewer.imageryLayers.addImageryProvider(refProvider);
+        referenceLayerRef.current = refLayer;
+      }
+    } else {
+      const newBaseProvider = createOsmProvider();
+      const newBaseLayer = viewer.imageryLayers.addImageryProvider(newBaseProvider, 0);
+
+      const oldBase = basemapLayerRef.current;
+      if (oldBase && oldBase !== newBaseLayer) {
+        viewer.imageryLayers.remove(oldBase);
+      }
+      basemapLayerRef.current = newBaseLayer;
+
+      // Remove dark reference layer in OSM mode
+      if (referenceLayerRef.current) {
+        viewer.imageryLayers.remove(referenceLayerRef.current);
+        referenceLayerRef.current = null;
+      }
     }
-    basemapLayerRef.current = newLayer;
   }, [basemap]);
 
   // 4. Camera flight to selected location
@@ -687,6 +725,11 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     const heatLayer = viewer.imageryLayers.addImageryProvider(heatProvider);
     heatLayer.alpha = 0.82;
     heatImageryLayerRef.current = heatLayer;
+
+    // Raise reference layer to the top so city and road labels stay visible on top of the heatmap
+    if (referenceLayerRef.current) {
+      viewer.imageryLayers.raiseToTop(referenceLayerRef.current);
+    }
   }, [gridData, selectedLocation]);
 
   // 5B. Render inspected cell reticle outline
