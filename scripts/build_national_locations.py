@@ -7,11 +7,16 @@ import json
 import os
 
 STATE_NAMES = {
+    'andaman-and-nicobar-islands': 'Andaman and Nicobar Islands',
     'andhra-pradesh': 'Andhra Pradesh',
+    'arunachal-pradesh': 'Arunachal Pradesh',
     'assam': 'Assam',
     'bihar': 'Bihar',
+    'chandigarh': 'Chandigarh',
     'chhattisgarh': 'Chhattisgarh',
     'delhi': 'Delhi',
+    'delhi_districts': 'Delhi',
+    'dnh-and-dd': 'Dadra and Nagar Haveli and Daman and Diu',
     'goa': 'Goa',
     'gujarat': 'Gujarat',
     'haryana': 'Haryana',
@@ -20,10 +25,18 @@ STATE_NAMES = {
     'jharkhand': 'Jharkhand',
     'karnataka': 'Karnataka',
     'kerala': 'Kerala',
+    'ladakh': 'Ladakh',
+    'lakshadweep': 'Lakshadweep',
     'madhya-pradesh': 'Madhya Pradesh',
+    'manipur': 'Manipur',
+    'meghalaya': 'Meghalaya',
+    'mizoram': 'Mizoram',
+    'nagaland': 'Nagaland',
     'odisha': 'Odisha',
+    'puducherry': 'Puducherry',
     'punjab': 'Punjab',
     'rajasthan': 'Rajasthan',
+    'sikkim': 'Sikkim',
     'tamil-nadu': 'Tamil Nadu',
     'telangana': 'Telangana',
     'tripura': 'Tripura',
@@ -35,6 +48,7 @@ STATE_NAMES = {
 ALIASES = {
     'bengaluru': 'Bangalore',
     'bengaluru urban': 'Bangalore',
+    'bengaluru rural': 'Bangalore Rural',
     'chennai': 'Madras',
     'kolkata': 'Calcutta',
     'mumbai': 'Bombay',
@@ -57,7 +71,56 @@ ALIASES = {
     'varanasi': 'Banaras / Kashi',
     'thiruvananthapuram': 'Trivandrum',
     'kochi': 'Cochin',
+    'ernakulam': 'Kochi',
     'kozhikode': 'Calicut',
+    'jalandhar': 'Jullundur',
+    'visakhapatnam': 'Vizag',
+    'shimla': 'Simla',
+    'panaji': 'Panjim',
+    'north goa': 'Panaji / Panjim',
+    'south goa': 'Margao / Madgaon',
+    'puducherry': 'Pondicherry',
+    'tirunelveli': 'Tinnevelly',
+    'tiruchirappalli': 'Trichy',
+    'kanpur': 'Cawnpore',
+    'kanpur nagar': 'Kanpur',
+    'kanpur dehat': 'Akbarpur',
+    'alappuzha': 'Alleppey',
+    'kollam': 'Quilon',
+    'palakkad': 'Palghat',
+    'thrissur': 'Trichur',
+    'kamrup metropolitan': 'Guwahati',
+    'kamrup metro': 'Guwahati',
+    'south andaman': 'Port Blair',
+    'east sikkim': 'Gangtok',
+    'west sikkim': 'Geyzing',
+    'south sikkim': 'Namchi',
+    'north sikkim': 'Mangan',
+    'east khasi hills': 'Shillong',
+    'west khasi hills': 'Nongstoin',
+    'papum pare': 'Itanagar',
+    'kangra': 'Dharamshala',
+    'cachar': 'Silchar',
+    'east singhbhum': 'Jamshedpur',
+    'purbi singhbhum': 'Jamshedpur',
+    'west singhbhum': 'Chaibasa',
+    'pashchimi singhbhum': 'Chaibasa',
+    'gautam buddha nagar': 'Noida / Greater Noida',
+    'khordha': 'Bhubaneswar',
+    'saran': 'Chhapra',
+    'vaishali': 'Hajipur',
+    'bhojpur': 'Arrah',
+    'rohtas': 'Sasaram',
+    'pashchim champaran': 'Bettiah',
+    'purba champaran': 'Motihari',
+    'kaimur (bhabua)': 'Bhabua',
+    'kaimur': 'Bhabua',
+    'dakshina kannada': 'Mangaluru / Mangalore',
+    'uttara kannada': 'Karwar',
+    'warangal urban': 'Warangal',
+    'lahaul and spiti': 'Keylong',
+    'kinnaur': 'Reckong Peo',
+    'sirmaur': 'Nahan',
 }
 
 def generate():
@@ -135,9 +198,11 @@ def generate():
         sname = STATE_NAMES.get(slug, slug.replace('-', ' ').title())
         with open(f) as fp:
             d = json.load(fp)
+        if slug == 'delhi' and os.path.exists('data/interim/states/delhi_districts.geojson'):
+            continue
         for feat in d.get('features', []):
             props = feat.get('properties', {})
-            dname = props.get('district') or props.get('dtname') or props.get('name')
+            dname = props.get('district') or props.get('dtname') or props.get('name') or props.get('Dist_Name')
             if not dname:
                 continue
             dname = dname.strip()
@@ -273,7 +338,7 @@ def generate():
         fp.write(content)
 
     print(f"Generated backend/src/heatsense_api/repositories/locations.py with {len(cities)} city locations!")
-    print("Em dash check:", "—" in content)
+    print("Em dash check:", chr(8212) in content)
 
 if __name__ == '__main__':
     generate()

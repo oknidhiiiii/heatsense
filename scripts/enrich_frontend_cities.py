@@ -90,30 +90,97 @@ MH_HQ = {
     'gadchiroli': (20.1809, 80.0035, 250000),
 }
 
-# Premier National Metropolitan Hubs to include alongside Maharashtra
+# Premier National Metropolitan Hubs covering all 36 States and Union Territories
 NATIONAL_METROS = [
-    ('karnataka', 'Bengaluru Urban', 'Bengaluru Urban: Silicon Valley of India', 12.9716, 77.5946, 110000),
-    ('karnataka', 'Mysuru', 'Mysuru: Heritage Capital of Karnataka', 12.2958, 76.6394, 140000),
-    ('gujarat', 'Ahmedabad', 'Ahmedabad: Commercial Hub of Gujarat', 23.0225, 72.5714, 150000),
-    ('gujarat', 'Surat', 'Surat: Diamond and Textile Capital', 21.1702, 72.8311, 140000),
-    ('gujarat', 'Vadodara', 'Vadodara: Cultural City of Gujarat', 22.3072, 73.1812, 130000),
-    ('telangana', 'Hyderabad', 'Hyderabad: Cyberabad and Deccan Capital', 17.3850, 78.4867, 120000),
-    ('tamil-nadu', 'Chennai', 'Chennai: Gateway to South India', 13.0827, 80.2707, 110000),
-    ('tamil-nadu', 'Coimbatore', 'Coimbatore: Manchester of South India', 11.0168, 76.9558, 140000),
-    ('rajasthan', 'Jaipur', 'Jaipur: Pink City Capital of Rajasthan', 26.9124, 75.7873, 160000),
-    ('rajasthan', 'Jodhpur', 'Jodhpur: Sun City of Marwar', 26.2389, 73.0243, 180000),
-    ('uttar-pradesh', 'Lucknow', 'Lucknow: City of Nawabs and State Capital', 26.8467, 80.9462, 150000),
-    ('uttar-pradesh', 'Varanasi', 'Varanasi: Sacred Spiritual Capital on the Ganges', 25.3176, 82.9739, 130000),
-    ('uttar-pradesh', 'Agra', 'Agra: Yamuna River Heritage Hub', 27.1767, 78.0081, 140000),
-    ('madhya-pradesh', 'Bhopal', 'Bhopal: City of Lakes Capital of MP', 23.2599, 77.4126, 160000),
-    ('madhya-pradesh', 'Indore', 'Indore: Commercial Center of Central India', 22.7196, 75.8577, 150000),
-    ('west-bengal', 'Kolkata', 'Kolkata: Cultural Capital of India', 22.5726, 88.3639, 100000),
-    ('bihar', 'Patna', 'Patna: Ancient Pataliputra Capital of Bihar', 25.5941, 85.1376, 140000),
-    ('kerala', 'Thiruvananthapuram', 'Thiruvananthapuram: Coastal Capital of Kerala', 8.5241, 76.9366, 120000),
-    ('kerala', 'Ernakulam', 'Ernakulam / Kochi: Queen of the Arabian Sea', 9.9816, 76.2999, 130000),
-    ('odisha', 'Khordha', 'Bhubaneswar / Khordha: Temple City Capital of Odisha', 20.2961, 85.8245, 140000),
-    ('andhra-pradesh', 'Visakhapatnam', 'Visakhapatnam: Port City of Eastern Ghats', 17.6868, 83.2185, 150000),
-    ('delhi', 'Delhi', 'National Capital Territory of Delhi', 28.6139, 77.2090, 110000),
+    # Karnataka
+    ("karnataka", "Bengaluru Urban", "Bengaluru: Silicon Valley of India", 12.9716, 77.5946, 110000),
+    ("karnataka", "Mysuru", "Mysuru: Heritage Capital of Karnataka", 12.2958, 76.6394, 140000),
+    ("karnataka", "Dharwad", "Hubballi-Dharwad: Commercial Center of North Karnataka", 15.4589, 75.0078, 140000),
+    ("karnataka", "Dakshina Kannada", "Mangaluru: Port City of Coastal Karnataka", 12.9141, 74.8560, 130000),
+    ("karnataka", "Belagavi", "Belagavi: Northern Border Industrial Center", 15.8497, 74.4977, 150000),
+    # Gujarat
+    ("gujarat", "Ahmedabad", "Ahmedabad: Commercial Metropolis of Gujarat", 23.0225, 72.5714, 150000),
+    ("gujarat", "Surat", "Surat: Diamond and Textile Hub of India", 21.1702, 72.8311, 140000),
+    ("gujarat", "Vadodara", "Vadodara: Cultural Capital of Gujarat", 22.3072, 73.1812, 130000),
+    ("gujarat", "Rajkot", "Rajkot: Saurashtra Industrial Center", 22.3039, 70.8022, 140000),
+    ("gujarat", "Gandhinagar", "Gandhinagar: Green Capital City of Gujarat", 23.2156, 72.6369, 120000),
+    # Telangana
+    ("telangana", "Hyderabad", "Hyderabad: Cyberabad and Deccan Capital", 17.3850, 78.4867, 120000),
+    ("telangana", "Warangal Urban", "Warangal: Historic Kakatiya Capital", 17.9689, 79.5941, 130000),
+    # Tamil Nadu
+    ("tamil-nadu", "Chennai", "Chennai: Gateway to South India", 13.0827, 80.2707, 110000),
+    ("tamil-nadu", "Coimbatore", "Coimbatore: Manchester of South India", 11.0168, 76.9558, 140000),
+    ("tamil-nadu", "Madurai", "Madurai: Cultural Capital on Vaigai River", 9.9252, 78.1198, 130000),
+    ("tamil-nadu", "Tiruchirappalli", "Tiruchirappalli: Central Kaveri Basin Hub", 10.7905, 78.7047, 140000),
+    # Andhra Pradesh
+    ("andhra-pradesh", "Visakhapatnam", "Visakhapatnam: Port City of Eastern Ghats", 17.6868, 83.2185, 150000),
+    ("andhra-pradesh", "Guntur", "Amaravati-Guntur: Krishna River Capital Region", 16.3067, 80.4365, 140000),
+    ("andhra-pradesh", "Tirupati", "Tirupati: Spiritual Capital of Andhra Pradesh", 13.6288, 79.4192, 130000),
+    # Kerala
+    ("kerala", "Thiruvananthapuram", "Thiruvananthapuram: Coastal Capital of Kerala", 8.5241, 76.9366, 120000),
+    ("kerala", "Ernakulam", "Ernakulam / Kochi: Queen of the Arabian Sea", 9.9816, 76.2999, 130000),
+    ("kerala", "Kozhikode", "Kozhikode: Historic Malabar Spice Coast", 11.2588, 75.7804, 130000),
+    # Rajasthan
+    ("rajasthan", "Jaipur", "Jaipur: Pink City Capital of Rajasthan", 26.9124, 75.7873, 160000),
+    ("rajasthan", "Jodhpur", "Jodhpur: Sun City of Marwar", 26.2389, 73.0243, 180000),
+    ("rajasthan", "Udaipur", "Udaipur: City of Lakes in Mewar", 24.5854, 73.7125, 150000),
+    ("rajasthan", "Kota", "Kota: Chambal River Industrial and Education Hub", 25.2138, 75.8648, 150000),
+    # Uttar Pradesh
+    ("uttar-pradesh", "Lucknow", "Lucknow: City of Nawabs and State Capital", 26.8467, 80.9462, 150000),
+    ("uttar-pradesh", "Kanpur Nagar", "Kanpur: Industrial Hub on the Ganges", 26.4499, 80.3319, 140000),
+    ("uttar-pradesh", "Varanasi", "Varanasi: Sacred Spiritual Capital on the Ganges", 25.3176, 82.9739, 130000),
+    ("uttar-pradesh", "Agra", "Agra: Historic Yamuna River Heritage Hub", 27.1767, 78.0081, 140000),
+    ("uttar-pradesh", "Prayagraj", "Prayagraj: Triveni Sangam Sacred Confluence", 25.4358, 81.8463, 150000),
+    ("uttar-pradesh", "Gautam Buddha Nagar", "Noida / Greater Noida: Delhi NCR Tech Corridor", 28.5355, 77.3910, 120000),
+    # Madhya Pradesh
+    ("madhya-pradesh", "Bhopal", "Bhopal: City of Lakes Capital of MP", 23.2599, 77.4126, 160000),
+    ("madhya-pradesh", "Indore", "Indore: Commercial Center of Central India", 22.7196, 75.8577, 150000),
+    ("madhya-pradesh", "Gwalior", "Gwalior: Historic Fort City of Northern MP", 26.2183, 78.1828, 150000),
+    ("madhya-pradesh", "Jabalpur", "Jabalpur: Narmada River Valley Marble Rocks", 23.1815, 79.9864, 150000),
+    # West Bengal
+    ("west-bengal", "Kolkata", "Kolkata: Cultural Capital of India", 22.5726, 88.3639, 100000),
+    ("west-bengal", "Howrah", "Howrah: Industrial Twin City on Hooghly River", 22.5958, 88.2636, 110000),
+    ("west-bengal", "Darjeeling", "Darjeeling: Queen of the Himalayas", 27.0410, 88.2663, 130000),
+    # Bihar
+    ("bihar", "Patna", "Patna: Ancient Pataliputra Capital of Bihar", 25.5941, 85.1376, 140000),
+    ("bihar", "Gaya", "Gaya / Bodh Gaya: Spiritual Sanctuary on Phalgu River", 24.7955, 85.0002, 130000),
+    # Odisha
+    ("odisha", "Khordha", "Bhubaneswar: Temple City Capital of Odisha", 20.2961, 85.8245, 140000),
+    ("odisha", "Cuttack", "Cuttack: Silver City on Mahanadi Delta", 20.4625, 85.8828, 130000),
+    ("odisha", "Puri", "Puri: Coastal Temple City of Jagannath", 19.8135, 85.8312, 130000),
+    # Punjab & Haryana
+    ("punjab", "Ludhiana", "Ludhiana: Industrial Capital of Punjab", 30.9010, 75.8573, 140000),
+    ("punjab", "Amritsar", "Amritsar: Holy City of the Golden Temple", 31.6340, 74.8723, 130000),
+    ("haryana", "Gurugram", "Gurugram: Millennium City and Global Tech Hub", 28.4595, 77.0266, 120000),
+    ("haryana", "Faridabad", "Faridabad: Major Industrial Center of Haryana", 28.4089, 77.3178, 120000),
+    ("chandigarh", "Chandigarh", "Chandigarh: Planned City Capital of Punjab and Haryana", 30.7333, 76.7794, 90000),
+    # Delhi
+    ("delhi", "Delhi", "National Capital Territory of Delhi", 28.6139, 77.2090, 110000),
+    # Goa
+    ("goa", "North Goa", "Panaji / North Goa: Mandovi Estuary Capital", 15.4909, 73.8278, 110000),
+    # Chhattisgarh & Jharkhand
+    ("chhattisgarh", "Raipur", "Raipur: Capital of Mineral-Rich Chhattisgarh", 21.2514, 81.6296, 140000),
+    ("jharkhand", "Ranchi", "Ranchi: City of Waterfalls Capital of Jharkhand", 23.3441, 85.3096, 140000),
+    ("jharkhand", "East Singhbhum", "Jamshedpur / East Singhbhum: Steel City of India", 22.8046, 86.2029, 130000),
+    # Assam & Northeast
+    ("assam", "Kamrup Metropolitan", "Guwahati: Gateway to Northeast India", 26.1445, 91.7362, 120000),
+    ("meghalaya", "East Khasi Hills", "Shillong: Scotland of the East", 25.5788, 91.8933, 120000),
+    ("tripura", "West Tripura", "Agartala: Capital City of Tripura", 23.8315, 91.2868, 110000),
+    ("manipur", "Imphal West", "Imphal: Historical Capital Valley of Manipur", 24.8170, 93.9368, 110000),
+    ("mizoram", "Aizawl", "Aizawl: Ridge Capital of Mizoram", 23.7271, 92.7176, 110000),
+    ("nagaland", "Kohima", "Kohima: Mountain Capital of Nagaland", 25.6751, 94.1086, 110000),
+    ("arunachal-pradesh", "Papum Pare", "Itanagar: Foothill Capital of Arunachal Pradesh", 27.0844, 93.6053, 120000),
+    ("sikkim", "East Sikkim", "Gangtok: Himalayan Capital of Sikkim", 27.3389, 88.6065, 110000),
+    # Himalayan & UTs
+    ("himachal-pradesh", "Shimla", "Shimla: Summer Capital of the Himalayas", 31.1048, 77.1734, 120000),
+    ("himachal-pradesh", "Kangra", "Dharamshala / Kangra: Dhauladhar Valley", 32.2190, 76.3234, 130000),
+    ("uttarakhand", "Dehradun", "Dehradun: Doon Valley Capital of Uttarakhand", 30.3165, 78.0322, 130000),
+    ("uttarakhand", "Haridwar", "Haridwar: Gateway to the Gods on the Ganges", 29.9457, 78.1642, 120000),
+    ("jammu-and-kashmir", "Srinagar", "Srinagar: Summer Capital on Dal Lake", 34.0837, 74.7973, 110000),
+    ("jammu-and-kashmir", "Jammu", "Jammu: Winter Capital on Tawi River", 32.7266, 74.8570, 120000),
+    ("ladakh", "Leh", "Leh: High Altitude Himalayan Capital of Ladakh", 34.1526, 77.5771, 160000),
+    ("puducherry", "Puducherry", "Puducherry: French Heritage Coastal Territory", 11.9416, 79.8083, 90000),
+    ("andaman-and-nicobar-islands", "South Andaman", "Port Blair: Capital of Andaman and Nicobar Islands", 11.6234, 92.7265, 110000),
 ]
 
 def build():
@@ -271,7 +338,7 @@ def build():
         f.write(text)
 
     print(f"Generated frontend/src/utils/cityBoundaries.ts with {len(entries)} cities!")
-    print("Em dash check:", "—" in text)
+    print("Em dash check:", chr(8212) in text)
 
 if __name__ == '__main__':
     build()
