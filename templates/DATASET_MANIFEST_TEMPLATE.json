@@ -1,0 +1,32 @@
+{
+  "dataset_id": "replace-with-stable-id",
+  "provider": "replace-with-provider",
+  "dataset_name": "replace-with-dataset-name",
+  "source_reference": "official dataset page or retrieval method",
+  "retrieved_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "license_and_attribution": "verify and document",
+  "variables": [
+    {
+      "source_name": "replace",
+      "canonical_name": "air_temperature_2m",
+      "source_units": "verify",
+      "canonical_units": "degC"
+    }
+  ],
+  "temporal_coverage": {
+    "start_utc": "YYYY-MM-DDTHH:MM:SSZ",
+    "end_utc": "YYYY-MM-DDTHH:MM:SSZ",
+    "resolution": "hourly"
+  },
+  "spatial_coverage": {
+    "region": "India pilot region",
+    "crs": "verify",
+    "native_grid_spacing": "verify"
+  },
+  "transformations": [],
+  "missingness_summary": {},
+  "checksums": {},
+  "notes": [
+    "Do not fill this manifest with guessed values."
+  ]
+}
