@@ -1,6 +1,5 @@
 import React from 'react';
 import { LayerType, MapGridResponse } from '../../types/api';
-import { COLOR_STOPS } from '../../utils/colorScale';
 
 interface LegendProps {
   layer: LayerType;
@@ -21,7 +20,18 @@ export const Legend: React.FC<LegendProps> = ({ layer, gridData }) => {
     }
   };
 
-  const gradientString = `linear-gradient(to right, ${COLOR_STOPS.map((s) => s.hex).join(', ')})`;
+  // Compute actual min and max across cells
+  const temps = (gridData?.cells || [])
+    .map((c) => c.value)
+    .filter((v): v is number => v !== null);
+
+  const minVal = temps.length > 0 ? Math.round(Math.min(...temps) * 10) / 10 : 18;
+  const maxVal = temps.length > 0 ? Math.round(Math.max(...temps) * 10) / 10 : 38;
+  const midVal = Math.round(((minVal + maxVal) / 2) * 10) / 10;
+
+  // Vibrant thermal gradient matching dynamic normalization
+  const gradientString =
+    'linear-gradient(to right, #10b981 0%, #84cc16 20%, #eab308 40%, #f97316 60%, #ef4444 80%, #d946ef 100%)';
 
   return (
     <div className="legend-container">
@@ -33,11 +43,9 @@ export const Legend: React.FC<LegendProps> = ({ layer, gridData }) => {
       <div className="legend-bar-wrapper">
         <div className="legend-bar" style={{ background: gradientString }} />
         <div className="legend-labels">
-          {COLOR_STOPS.map((stop) => (
-            <span key={stop.temp} className="legend-tick">
-              {stop.temp}°
-            </span>
-          ))}
+          <span className="legend-tick">{minVal}° (Cool)</span>
+          <span className="legend-tick">{midVal}° (Moderate)</span>
+          <span className="legend-tick">{maxVal}° (Heat Island)</span>
         </div>
       </div>
 
@@ -55,7 +63,7 @@ export const Legend: React.FC<LegendProps> = ({ layer, gridData }) => {
           )}
           <div>
             <span className="meta-label">Resolution:</span>{' '}
-            <span className="meta-val">~9 km (0.1°)</span>
+            <span className="meta-val">~9 km (City Heatmap)</span>
           </div>
         </div>
       )}

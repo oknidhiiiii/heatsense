@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, RotateCcw, BarChart2, Map } from 'lucide-react';
 import { LocationItem, LayerType, HealthResponse } from '../../types/api';
 import { api } from '../../services/api';
+import { CITIES_DATA } from '../../utils/cityBoundaries';
 
 interface HeaderProps {
   health: HealthResponse | null;
@@ -12,6 +13,8 @@ interface HeaderProps {
   onOpenMetrics: () => void;
   basemap: 'osm' | 'dark';
   onToggleBasemap: () => void;
+  hoveredCityId: string | null;
+  onCityHover: (cityId: string | null) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMetrics,
   basemap,
   onToggleBasemap,
+  hoveredCityId,
+  onCityHover,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<LocationItem[]>([]);
@@ -80,60 +85,107 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Location Search Bar */}
-      <div className="search-container" ref={searchRef}>
-        <div className="search-input-wrapper">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search Indian city, state (e.g. Mumbai, Pune)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-          />
-          {selectedLocation && (
-            <button
-              className="clear-button"
-              onClick={() => {
-                setSearchQuery('');
-                onSelectLocation(null);
-              }}
-              title="Return to India Overview"
-            >
-              <RotateCcw size={14} />
-            </button>
+      {/* Location Search Bar with City Chips */}
+      <div className="search-and-chips-container">
+        <div className="search-container" ref={searchRef}>
+          <div className="search-input-wrapper">
+            <Search size={16} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search city (e.g. Mumbai, Pune, Thane, Nashik)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+            />
+            {selectedLocation && (
+              <button
+                className="clear-button"
+                onClick={() => {
+                  setSearchQuery('');
+                  onSelectLocation(null);
+                }}
+                title="Return to Regional Overview"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
+          </div>
+
+          {isOpen && suggestions.length > 0 && (
+            <ul className="suggestions-dropdown">
+              {suggestions.map((loc) => (
+                <li
+                  key={loc.id}
+                  className={`suggestion-item ${hoveredCityId === loc.id ? 'highlighted' : ''}`}
+                  onClick={() => {
+                    onSelectLocation(loc);
+                    setSearchQuery(loc.name);
+                    setIsOpen(false);
+                    onCityHover(null);
+                  }}
+                  onMouseEnter={() => onCityHover(loc.id)}
+                  onMouseLeave={() => onCityHover(null)}
+                >
+                  <div className="loc-name-col">
+                    <span className="loc-name">📍 {loc.name}</span>
+                    <span className="loc-admin">
+                      {[loc.admin1, loc.country_code].filter(Boolean).join(', ')}
+                    </span>
+                  </div>
+                  <span className={`badge-coverage ${loc.coverage_status}`}>
+                    {loc.coverage_status}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        {isOpen && suggestions.length > 0 && (
-          <ul className="suggestions-dropdown">
-            {suggestions.map((loc) => (
-              <li
-                key={loc.id}
-                className="suggestion-item"
-                onClick={() => {
-                  onSelectLocation(loc);
-                  setSearchQuery(loc.name);
-                  setIsOpen(false);
-                }}
-              >
-                <div className="loc-name-col">
-                  <span className="loc-name">{loc.name}</span>
-                  <span className="loc-admin">
-                    {[loc.admin1, loc.country_code].filter(Boolean).join(', ')}
-                  </span>
-                </div>
-                <span className={`badge-coverage ${loc.coverage_status}`}>
-                  {loc.coverage_status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Quick City Selector Chips with Hover Outlining */}
+        <div className="city-chips-bar">
+          <button
+            className={`city-chip ${!selectedLocation ? 'active' : ''}`}
+            onClick={() => {
+              setSearchQuery('');
+              onSelectLocation(null);
+            }}
+            onMouseEnter={() => onCityHover(null)}
+            title="View all city heat clusters across the pilot region"
+          >
+            All Cities
+          </button>
+          {CITIES_DATA.map((city) => (
+            <button
+              key={city.id}
+              className={`city-chip ${selectedLocation?.id === city.id ? 'active' : ''} ${
+                hoveredCityId === city.id ? 'hovered' : ''
+              }`}
+              onClick={() => {
+                onSelectLocation({
+                  id: city.id,
+                  name: city.name,
+                  type: 'city',
+                  country_code: 'IN',
+                  admin1: city.state,
+                  latitude: city.latitude,
+                  longitude: city.longitude,
+                  bbox: city.bbox,
+                  coverage_status: 'supported',
+                });
+                setSearchQuery(city.name);
+              }}
+              onMouseEnter={() => onCityHover(city.id)}
+              onMouseLeave={() => onCityHover(null)}
+              title={`${city.name}: ${city.description} (Hover to outline on globe)`}
+            >
+              📍 {city.name}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Layer Controls */}
+      {/* Layer Controls & Basemap Switcher */}
       <div className="layer-controls">
         <div className="layer-button-group">
           <button

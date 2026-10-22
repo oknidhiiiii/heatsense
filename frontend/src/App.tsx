@@ -14,6 +14,7 @@ import { Legend } from './components/map/Legend';
 import { HistoryChart } from './components/charts/HistoryChart';
 import { CellInspector } from './components/inspector/CellInspector';
 import { MetricsModal } from './components/models/MetricsModal';
+import { CityData } from './utils/cityBoundaries';
 
 export const App: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationItem | null>(null);
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
   const [isMetricsOpen, setIsMetricsOpen] = useState(false);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [basemap, setBasemap] = useState<'osm' | 'dark'>('osm');
+  const [hoveredCityId, setHoveredCityId] = useState<string | null>(null);
 
   // Check backend health on startup
   useEffect(() => {
@@ -60,6 +62,21 @@ export const App: React.FC = () => {
     setSelectedCell(cell);
   }, []);
 
+  const handleCitySelect = useCallback((city: CityData) => {
+    setSelectedLocation({
+      id: city.id,
+      name: city.name,
+      type: 'city',
+      country_code: 'IN',
+      admin1: city.state,
+      latitude: city.latitude,
+      longitude: city.longitude,
+      bbox: city.bbox,
+      coverage_status: 'supported',
+    });
+    setSelectedCell(null);
+  }, []);
+
   const activeLat = selectedCell?.latitude ?? selectedLocation?.latitude ?? 18.93;
   const activeLon = selectedCell?.longitude ?? selectedLocation?.longitude ?? 72.83;
   const activeName = selectedCell
@@ -80,6 +97,8 @@ export const App: React.FC = () => {
         onOpenMetrics={() => setIsMetricsOpen(true)}
         basemap={basemap}
         onToggleBasemap={() => setBasemap((b) => (b === 'osm' ? 'dark' : 'osm'))}
+        hoveredCityId={hoveredCityId}
+        onCityHover={setHoveredCityId}
       />
 
       <main className="main-content">
@@ -90,6 +109,9 @@ export const App: React.FC = () => {
           onCellSelect={handleCellSelect}
           isLoading={isLoadingGrid}
           basemap={basemap}
+          hoveredCityId={hoveredCityId}
+          onCityHover={setHoveredCityId}
+          onCitySelect={handleCitySelect}
         />
 
         <Legend layer={activeLayer} gridData={gridData} />
@@ -117,5 +139,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
-
 export default App;
