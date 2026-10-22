@@ -3,7 +3,7 @@
 Updated: 2026-10-22
 
 ## Current stage
-- **Stage**: Stage 1 — Architecture Scaffold (Completed) -> Transitioning to Stage 2 (Data Feasibility)
+- **Stage**: Stage 2 — Data Feasibility (Completed) -> Transitioning to Stage 3 (ML Pipeline)
 - **Lead**: HeatSense Lead Orchestrator
 - **Branch/revision**: `main`
 
@@ -11,9 +11,9 @@ Updated: 2026-10-22
 | Workstream | Owner | Status | Files / Modules | Blockers | Tests / Evidence |
 |---|---|---|---|---|---|
 | Architecture & Scaffold | Lead Orchestrator | Complete | `backend/`, `frontend/`, `ml/`, `docs/adr/`, `pyproject.toml` | None | Scaffold tests pass, Vite build passes |
-| Data Engineering | Data Engineering Lead | In Progress (Stage 2) | `ml/src/heatsense_ml/data/`, `data/` | None | Pilot scope ADR 0004 approved; CDS API specs analyzed |
-| ML & Forecasting | ML Lead | Ready for Stage 3 | `ml/src/heatsense_ml/models/`, `artifacts/` | Blocked by Stage 2 data | Strategy documented in ADR 0003, 0005 |
-| Backend & API | Backend Lead | Shell Ready (Stage 4) | `backend/src/heatsense_api/` | None | `/api/v1/health` passing tests |
+| Data Engineering | Data Engineering Lead | Complete | `ml/src/heatsense_ml/data/`, `data/` | None | Manifest generated, 2.38M rows validated, 10 tests pass |
+| ML & Forecasting | ML Lead | In Progress (Stage 3) | `ml/src/heatsense_ml/features/`, `models/`, `training/` | None | Data ready in `data/processed/pilot_weather.parquet` |
+| Backend & API | Backend Lead | Shell Ready (Stage 4) | `backend/src/heatsense_api/` | Blocked by Stage 3 artifacts | `/api/v1/health` passing tests |
 | Frontend & UX | Frontend Lead | Shell Ready (Stage 5) | `frontend/src/` | None | App shell & typed API client passing build |
 | Geospatial & Map | Geospatial Lead | Ready for Stage 5/6 | `frontend/src/components/map/` | None | Cesium + Carto adapter design confirmed |
 | QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | Pytest, Ruff, Vite build, Docker config verified |
