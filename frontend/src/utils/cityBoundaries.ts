@@ -24,7 +24,7 @@ export const CITIES_DATA: CityData[] = [
     longitude: 72.8777,
     cameraHeight: 45000,
     bbox: [18.88, 72.75, 19.30, 72.98],
-    description: 'Mumbai Metropolitan Region — Coastal Urban Heat Island',
+    description: 'Mumbai Metropolitan Region: Coastal Urban Heat Island',
     polygonCoordinates: [
       // Detailed boundary polygon tracing Mumbai peninsula & suburban coast
       [72.815, 18.895], // Colaba Point
@@ -57,7 +57,7 @@ export const CITIES_DATA: CityData[] = [
     longitude: 73.8567,
     cameraHeight: 50000,
     bbox: [18.42, 73.72, 18.66, 74.00],
-    description: 'Pune Metropolitan Area — Deccan Plateau Heat Corridor',
+    description: 'Pune Metropolitan Area: Deccan Plateau Heat Corridor',
     polygonCoordinates: [
       // Polygon encompassing PMC & PCMC (Pimpri-Chinchwad, Hinjewadi, Hadapsar, Katraj)
       [73.710, 18.590], // Hinjewadi Phase 3
@@ -84,7 +84,7 @@ export const CITIES_DATA: CityData[] = [
     longitude: 72.9781,
     cameraHeight: 35000,
     bbox: [19.12, 72.92, 19.32, 73.08],
-    description: 'Thane Municipal Corporation — Creek & Inland Urban Core',
+    description: 'Thane Municipal Corporation: Creek & Inland Urban Core',
     polygonCoordinates: [
       [72.940, 19.290], // Gaimukh / Ghodbunder
       [72.975, 19.270], // Kasarvadavali
@@ -106,7 +106,7 @@ export const CITIES_DATA: CityData[] = [
     longitude: 73.7898,
     cameraHeight: 45000,
     bbox: [19.90, 73.70, 20.08, 73.88],
-    description: 'Nashik Valley — Northern Maharashtra Plateau',
+    description: 'Nashik Valley: Northern Maharashtra Plateau',
     polygonCoordinates: [
       [73.740, 20.040], // Gangapur Dam road
       [73.780, 20.060], // Panchavati North / Mhasrul

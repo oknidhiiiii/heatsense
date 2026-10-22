@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
 } from 'recharts';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { HistoricalPoint, HistoricalResponse } from '../../types/api';
 import { api } from '../../services/api';
 
@@ -24,12 +24,12 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 }) => {
   const [history, setHistory] = useState<HistoricalResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
 
-    // Fetch past 7 days of hourly data for location
     const end = '2024-06-28T23:00:00';
     const start = '2024-06-22T00:00:00';
 
@@ -50,11 +50,19 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
   }, [latitude, longitude]);
 
   if (loading) {
-    return <div className="chart-loading">Loading historical temperature series...</div>;
+    return (
+      <div className="apple-place-card loading">
+        <span className="spinner" /> Loading atmospheric observations...
+      </div>
+    );
   }
 
   if (!history || history.points.length === 0) {
-    return <div className="chart-empty">No historical data available for coordinates.</div>;
+    return (
+      <div className="apple-place-card empty">
+        No climate observations recorded for this sector.
+      </div>
+    );
   }
 
   const chartData = history.points.map((p: HistoricalPoint) => ({
@@ -64,70 +72,105 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
   }));
 
   const temps = history.points.map((p) => p.value);
+  const latestTemp = temps[temps.length - 1];
   const minTemp = Math.min(...temps);
   const maxTemp = Math.max(...temps);
   const meanTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
 
   return (
-    <div className="history-chart-card">
-      <div className="chart-header">
-        <div>
-          <h4>Temperature Trend: {locationName}</h4>
-          <span className="chart-subtitle">
-            Source: {history.source.id} (Hourly) • Lat: {latitude.toFixed(2)}°, Lon: {longitude.toFixed(2)}°
-          </span>
+    <div className={`apple-place-card ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="apple-card-top">
+        <div className="place-info">
+          <div className="place-location-row">
+            <h3 className="place-title">{locationName}</h3>
+            <span className="place-sub">
+              {latitude.toFixed(2)}°N, {longitude.toFixed(2)}°E
+            </span>
+          </div>
+
+          <div className="temp-hero-row">
+            <span className="temp-hero-val">{latestTemp.toFixed(1)}°</span>
+            <div className="temp-hero-meta">
+              <span className="temp-unit">Celsius</span>
+              <span className="temp-stat-summary">
+                L: {minTemp}° · H: {maxTemp}° · Avg: {meanTemp}°
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="chart-stats">
-          <span className="stat-pill">Min: {minTemp}°C</span>
-          <span className="stat-pill">Mean: {meanTemp}°C</span>
-          <span className="stat-pill hot">Max: {maxTemp}°C</span>
-        </div>
+
+        <button
+          className="collapse-toggle-btn"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand Trend' : 'Collapse Card'}
+        >
+          {isCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
       </div>
 
-      <div style={{ width: '100%', height: 160 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
-            <XAxis
-              dataKey="date"
-              stroke="#8b949e"
-              fontSize={11}
-              tickLine={false}
-              interval={24}
-            />
-            <YAxis
-              stroke="#8b949e"
-              fontSize={11}
-              domain={['auto', 'auto']}
-              unit="°C"
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#161b22',
-                border: '1px solid #30363d',
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
-              formatter={(val: number) => [`${val} °C`, 'Temperature']}
-              labelFormatter={(label, payload) => {
-                if (payload && payload.length > 0) {
-                  return `${payload[0].payload.date} ${payload[0].payload.time} UTC`;
-                }
-                return label;
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="temp"
-              stroke="#ff7b00"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, fill: '#ff3b30' }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {!isCollapsed && (
+        <div className="chart-wrapper-lux">
+          <div className="chart-label-row">
+            <span className="chart-axis-label">7-Day Diurnal Temperature Rhythm</span>
+            <span className="chart-source-tag">ERA5-Land Reanalysis</span>
+          </div>
+
+          <div style={{ width: '100%', height: 135 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 8, right: 6, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="luxTempGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.42} />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  stroke="#64748b"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255, 255, 255, 0.08)' }}
+                  interval={24}
+                />
+                <YAxis
+                  stroke="#64748b"
+                  fontSize={10}
+                  domain={['auto', 'auto']}
+                  unit="°"
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255, 255, 255, 0.08)' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    color: '#f8fafc',
+                  }}
+                  formatter={(val: number) => [`${val.toFixed(2)} °C`, 'Temperature']}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload.length > 0) {
+                      return `${payload[0].payload.date} at ${payload[0].payload.time} UTC`;
+                    }
+                    return label;
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="temp"
+                  stroke="#f59e0b"
+                  strokeWidth={2.2}
+                  fill="url(#luxTempGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

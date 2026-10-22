@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, RotateCcw, BarChart2, Map } from 'lucide-react';
+import { Search, RotateCcw, BarChart2, Layers } from 'lucide-react';
 import { LocationItem, LayerType, HealthResponse } from '../../types/api';
 import { api } from '../../services/api';
 import { CITIES_DATA } from '../../utils/cityBoundaries';
@@ -68,84 +68,76 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="app-header">
-      <div className="brand-section">
-        <span className="brand-title">HeatSense</span>
-        <span className="brand-badge">India Pilot</span>
-        {health && (
-          <span
-            className="brand-badge"
-            style={{
-              color: health.model_loaded ? '#3fb950' : '#d29922',
-              borderColor: health.model_loaded ? 'rgba(63, 185, 80, 0.3)' : 'rgba(210, 153, 34, 0.3)',
-            }}
-          >
-            {health.model_loaded ? 'ML Online' : 'Connecting'}
-          </span>
-        )}
-      </div>
-
-      {/* Location Search Bar with City Chips */}
-      <div className="search-and-chips-container">
-        <div className="search-container" ref={searchRef}>
-          <div className="search-input-wrapper">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search city (e.g. Mumbai, Pune, Thane, Nashik)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-            />
-            {selectedLocation && (
-              <button
-                className="clear-button"
-                onClick={() => {
-                  setSearchQuery('');
-                  onSelectLocation(null);
-                }}
-                title="Return to Regional Overview"
-              >
-                <RotateCcw size={14} />
-              </button>
-            )}
+    <div className="apple-floating-chrome">
+      {/* 1. Left Island: Search & City Exploration */}
+      <div className="apple-search-island" ref={searchRef}>
+        <div className="island-brand-row">
+          <div className="brand-badge-group">
+            <span className="brand-wordmark">HeatSense</span>
+            <span className="brand-dot-live" title="Inference Engine Active" />
           </div>
-
-          {isOpen && suggestions.length > 0 && (
-            <ul className="suggestions-dropdown">
-              {suggestions.map((loc) => (
-                <li
-                  key={loc.id}
-                  className={`suggestion-item ${hoveredCityId === loc.id ? 'highlighted' : ''}`}
-                  onClick={() => {
-                    onSelectLocation(loc);
-                    setSearchQuery(loc.name);
-                    setIsOpen(false);
-                    onCityHover(null);
-                  }}
-                  onMouseEnter={() => onCityHover(loc.id)}
-                  onMouseLeave={() => onCityHover(null)}
-                >
-                  <div className="loc-name-col">
-                    <span className="loc-name">{loc.name}</span>
-                    <span className="loc-admin">
-                      {[loc.admin1, loc.country_code].filter(Boolean).join(', ')}
-                    </span>
-                  </div>
-                  <span className={`badge-coverage ${loc.coverage_status}`}>
-                    {loc.coverage_status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {health?.model_loaded && (
+            <span className="ml-status-text">AI Pilot Active</span>
           )}
         </div>
 
-        {/* Quick City Selector Chips with Hover Outlining */}
-        <div className="city-chips-bar">
+        <div className="search-bar-pill">
+          <Search size={15} className="search-pill-icon" />
+          <input
+            type="text"
+            className="search-pill-input"
+            placeholder="Search Indian city or region..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+          />
+          {selectedLocation && (
+            <button
+              className="search-pill-clear"
+              onClick={() => {
+                setSearchQuery('');
+                onSelectLocation(null);
+              }}
+              title="Recenter Overview"
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
+        </div>
+
+        {isOpen && suggestions.length > 0 && (
+          <div className="apple-suggestions-menu">
+            {suggestions.map((loc) => (
+              <div
+                key={loc.id}
+                className={`suggestion-row ${hoveredCityId === loc.id ? 'active' : ''}`}
+                onClick={() => {
+                  onSelectLocation(loc);
+                  setSearchQuery(loc.name);
+                  setIsOpen(false);
+                  onCityHover(null);
+                }}
+                onMouseEnter={() => onCityHover(loc.id)}
+                onMouseLeave={() => onCityHover(null)}
+              >
+                <div className="loc-text-group">
+                  <span className="loc-primary-name">{loc.name}</span>
+                  <span className="loc-secondary-meta">
+                    {[loc.admin1, loc.country_code].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+                <span className={`status-pill ${loc.coverage_status}`}>
+                  {loc.coverage_status === 'supported' ? 'Supported' : 'Out of Pilot'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Minimalist City Pills */}
+        <div className="city-pill-strip">
           <button
-            className={`city-chip ${!selectedLocation ? 'active' : ''}`}
+            className={`pill-item ${!selectedLocation ? 'selected' : ''}`}
             onClick={() => {
               setSearchQuery('');
               onSelectLocation(null);
@@ -157,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
           {CITIES_DATA.map((city) => (
             <button
               key={city.id}
-              className={`city-chip ${selectedLocation?.id === city.id ? 'active' : ''} ${
+              className={`pill-item ${selectedLocation?.id === city.id ? 'selected' : ''} ${
                 hoveredCityId === city.id ? 'hovered' : ''
               }`}
               onClick={() => {
@@ -183,43 +175,49 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Layer Controls & Basemap Switcher */}
-      <div className="layer-controls">
-        <div className="layer-button-group">
+      {/* 2. Right Island: iOS Segmented Controller & Utility Actions */}
+      <div className="apple-control-island">
+        <div className="ios-segmented-control">
           <button
-            className={`layer-btn ${activeLayer === 'historical' ? 'active' : ''}`}
+            className={`seg-tab ${activeLayer === 'historical' ? 'active' : ''}`}
             onClick={() => onSelectLayer('historical')}
           >
             Historical
           </button>
           <button
-            className={`layer-btn ${activeLayer === 'forecast24' ? 'active' : ''}`}
+            className={`seg-tab ${activeLayer === 'forecast24' ? 'active' : ''}`}
             onClick={() => onSelectLayer('forecast24')}
           >
-            Forecast +24h
+            +24h Forecast
           </button>
           <button
-            className={`layer-btn ${activeLayer === 'forecast48' ? 'active' : ''}`}
+            className={`seg-tab ${activeLayer === 'forecast48' ? 'active' : ''}`}
             onClick={() => onSelectLayer('forecast48')}
           >
-            Forecast +48h
+            +48h Forecast
           </button>
         </div>
 
-        <button
-          className="basemap-toggle-btn"
-          onClick={onToggleBasemap}
-          title={`Switch basemap (current: ${basemap === 'osm' ? 'OpenStreetMap Standard' : 'Carto Dark'})`}
-        >
-          <Map size={15} />
-          <span>{basemap === 'osm' ? 'OSM Standard' : 'OSM Dark'}</span>
-        </button>
+        <div className="utility-cluster">
+          <button
+            className="glass-action-btn"
+            onClick={onToggleBasemap}
+            title={`Basemap: ${basemap === 'osm' ? 'OpenStreetMap Standard' : 'Carto Dark'}`}
+          >
+            <Layers size={15} />
+            <span>{basemap === 'osm' ? 'Standard' : 'Dark'}</span>
+          </button>
 
-        <button className="metrics-btn" onClick={onOpenMetrics} title="View Model Card & Evaluation Metrics">
-          <BarChart2 size={16} />
-          <span>Model Specs</span>
-        </button>
+          <button
+            className="glass-action-btn"
+            onClick={onOpenMetrics}
+            title="Inspect Model Card and Verification Metrics"
+          >
+            <BarChart2 size={15} />
+            <span>Model Specs</span>
+          </button>
+        </div>
       </div>
-    </header>
+    </div>
   );
 };
