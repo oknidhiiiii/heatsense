@@ -21,10 +21,9 @@ function createImageryProvider(type: 'osm' | 'dark'): Cesium.ImageryProvider {
     });
   }
   return new Cesium.UrlTemplateImageryProvider({
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    maximumLevel: 19,
-    credit: new Cesium.Credit('© OpenStreetMap contributors, © CARTO'),
+    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maximumLevel: 16,
+    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray)'),
   });
 }
 
