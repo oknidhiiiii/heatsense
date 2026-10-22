@@ -3,20 +3,20 @@
 Updated: 2026-10-22
 
 ## Current stage
-- **Stage**: Stage 0 — Reconnaissance and Planning (Completed)
+- **Stage**: Stage 1 — Architecture Scaffold (Completed) -> Transitioning to Stage 2 (Data Feasibility)
 - **Lead**: HeatSense Lead Orchestrator
-- **Branch/revision**: `main` (initial)
+- **Branch/revision**: `main`
 
 ## Workstreams
 | Workstream | Owner | Status | Files / Modules | Blockers | Tests / Evidence |
 |---|---|---|---|---|---|
-| Architecture & Scaffold | Lead Orchestrator | Ready for Stage 1 | `backend/`, `frontend/`, `ml/`, `docs/adr/` | None | ADRs 0001-0007 written |
-| Data Engineering | Data Engineering Lead | Ready for Stage 2 | `ml/src/heatsense_ml/data/`, `data/` | None | Pilot scope defined in ADR 0004 |
+| Architecture & Scaffold | Lead Orchestrator | Complete | `backend/`, `frontend/`, `ml/`, `docs/adr/`, `pyproject.toml` | None | Scaffold tests pass, Vite build passes |
+| Data Engineering | Data Engineering Lead | In Progress (Stage 2) | `ml/src/heatsense_ml/data/`, `data/` | None | Pilot scope ADR 0004 approved; CDS API specs analyzed |
 | ML & Forecasting | ML Lead | Ready for Stage 3 | `ml/src/heatsense_ml/models/`, `artifacts/` | Blocked by Stage 2 data | Strategy documented in ADR 0003, 0005 |
-| Backend & API | Backend Lead | Ready for Stage 4 | `backend/src/heatsense_api/` | Blocked by Stage 1 scaffold | API contract in `06_API_CONTRACTS.md` |
-| Frontend & UX | Frontend Lead | Ready for Stage 5 | `frontend/src/` | Blocked by Stage 1 scaffold | UI spec in `05_MAP_AND_UX_SPEC.md` |
-| Geospatial & Map | Geospatial Lead | Ready for Stage 5 | `frontend/src/components/map/` | Blocked by Stage 1 scaffold | Map strategy in ADR 0001 |
-| QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, CI | None | Env inspected; uv + Python 3.12 pinned |
+| Backend & API | Backend Lead | Shell Ready (Stage 4) | `backend/src/heatsense_api/` | None | `/api/v1/health` passing tests |
+| Frontend & UX | Frontend Lead | Shell Ready (Stage 5) | `frontend/src/` | None | App shell & typed API client passing build |
+| Geospatial & Map | Geospatial Lead | Ready for Stage 5/6 | `frontend/src/components/map/` | None | Cesium + Carto adapter design confirmed |
+| QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | Pytest, Ruff, Vite build, Docker config verified |
 
 ## Decisions and Architecture Records
 - **ADR 0001**: Mapping Engine — CesiumJS Globe with Abstracted Adapter (`docs/adr/0001-mapping-engine-cesium-with-fallback.md`)

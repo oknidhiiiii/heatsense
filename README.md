@@ -41,3 +41,50 @@ HeatSense is a geospatial heat intelligence web application. The initial release
 
 ## Important forecasting scope note
 ERA5-Land is historical reanalysis, not a source of future observations. A model trained only on historical observations and supplied only with current/past weather cannot automatically know future atmospheric forcing. The ML work must explicitly test a deployable recursive/multi-step strategy using only model-generated future states, or identify a permitted non-forecast input source. The product's selected requirement is that displayed forecast values come from HeatSense-trained model(s); do not silently substitute an external forecast. If 24/48-hour skill is inadequate, disclose the limitation and do not present it as a reliable operational forecast.
+
+## Local Development & Setup
+
+### Prerequisites
+- Python 3.12 (managed via `uv`)
+- Node.js v20+ (v24 LTS verified) & npm
+- Git
+
+### 1. Backend & ML Environment Setup
+```bash
+# Create Python 3.12 virtual environment using uv
+uv venv --python 3.12 .venv
+
+# Install backend and ML dependencies in editable mode with dev tools
+uv pip install --python .venv/bin/python -e ".[dev]"
+
+# Configure environment variables
+cp .env.example .env
+
+# Run backend unit tests and lint checks
+.venv/bin/pytest
+.venv/bin/ruff check .
+```
+
+### 2. Frontend Setup
+```bash
+cd frontend
+npm install
+
+# Run type check and production build
+npm run build
+
+# Start Vite development server
+npm run dev
+```
+
+### 3. Start Backend Server
+```bash
+.venv/bin/uvicorn heatsense_api.main:app --host 127.0.0.1 --port 8000 --reload
+# Health check available at: http://127.0.0.1:8000/api/v1/health
+```
+
+### 4. Docker Compose (Alternative)
+```bash
+docker-compose up --build
+```
+
