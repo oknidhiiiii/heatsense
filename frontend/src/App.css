@@ -24,12 +24,16 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
   background-color: #000000;
   font-family: var(--font-system);
   color: #f8fafc;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 /* Edge-to-edge Root Viewport */
@@ -37,7 +41,9 @@ html, body {
   position: fixed;
   inset: 0;
   width: 100vw;
+  width: 100dvw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background-color: #000000;
 }
@@ -938,36 +944,287 @@ html, body {
    7. Mobile & Responsive Refinements
    ========================================================================== */
 @media (max-width: 768px) {
+  /* Dynamic Safe Area Padding for Notch & Home Indicator */
   .apple-floating-chrome {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    left: 8px;
+    right: 8px;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
   }
+
+  /* Compact Search Island on Mobile */
   .apple-search-island {
     width: 100%;
+    padding: 8px 10px;
+    border-radius: 16px;
+    gap: 6px;
   }
+
+  .island-brand-row {
+    padding: 0 2px;
+  }
+
+  .brand-wordmark {
+    font-size: 0.9rem;
+  }
+
+  .ml-status-text {
+    font-size: 0.65rem;
+  }
+
+  .search-bar-pill {
+    padding: 6px 10px;
+    border-radius: 10px;
+    gap: 6px;
+  }
+
+  .search-pill-input {
+    font-size: 16px; /* Prevents iOS auto-zoom on input focus */
+  }
+
+  /* Smooth Touch Momentum Scrolling for City Pills */
+  .city-pill-strip {
+    gap: 4px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .pill-item {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    min-height: 28px;
+    scroll-snap-align: start;
+    touch-action: manipulation;
+  }
+
+  /* Compact Control Island on Mobile */
   .apple-control-island {
     width: 100%;
     justify-content: space-between;
+    gap: 6px;
   }
+
+  .ios-segmented-control {
+    flex: 1;
+    padding: 2px;
+    border-radius: 9999px;
+    gap: 1px;
+  }
+
+  .seg-tab {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+    flex: 1;
+    text-align: center;
+    touch-action: manipulation;
+  }
+
+  .utility-cluster {
+    gap: 5px;
+  }
+
+  .glass-action-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    min-height: 32px;
+    gap: 4px;
+    touch-action: manipulation;
+  }
+
+  /* Bottom Dock and Place Card */
   .bottom-chart-dock {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
   }
+
   .apple-place-card {
     width: 100%;
+    max-width: 100%;
+    border-radius: 20px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
+  .apple-place-card::before {
+    content: '';
+    display: block;
+    width: 34px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.25);
+    margin: 0 auto 6px auto;
+  }
+
+  .apple-place-card.collapsed {
+    padding: 8px 14px 10px 14px;
+    cursor: pointer;
+  }
+
+  .apple-place-card:not(.collapsed) {
+    max-height: 52dvh;
+    overflow-y: auto;
+    padding: 10px 14px 14px 14px;
+  }
+
+  .place-title {
+    font-size: 0.95rem;
+  }
+
+  .temp-hero-val {
+    font-size: clamp(1.8rem, 7vw, 2.4rem);
+  }
+
+  .temp-stat-summary {
+    font-size: 0.72rem;
+  }
+
+  .collapse-toggle-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  /* Floating Legend on Mobile: Positions above collapsed bottom card */
   .apple-legend-pill {
-    bottom: auto;
-    top: 190px;
-    right: 12px;
-    padding: 8px 12px;
-    min-width: 180px;
+    position: absolute;
+    top: auto;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    right: 8px;
+    min-width: 160px;
+    max-width: 200px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    gap: 4px;
+    z-index: 95;
   }
+
+  .legend-heading {
+    font-size: 0.64rem;
+  }
+
+  .legend-temp-span {
+    font-size: 0.62rem;
+  }
+
+  .legend-gradient-track {
+    height: 4px;
+  }
+
+  .legend-ticks-row {
+    font-size: 0.6rem;
+  }
+
+  /* Cell Inspector as Native Bottom Sheet Drawer on Mobile */
   .apple-inspector-sheet {
-    top: 260px;
-    right: 12px;
-    left: 12px;
-    width: auto;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 22px 22px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.65);
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px)) 18px;
+    z-index: 220;
+    animation: mobileSheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .apple-inspector-sheet::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    margin: -4px auto 10px auto;
+  }
+
+  @keyframes mobileSheetSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .spec-grid-lux {
+    gap: 6px;
+  }
+
+  .spec-cell {
+    padding: 6px 8px;
+  }
+
+  /* Modal on Mobile as Bottom Sheet */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: 24px 24px 0 0;
+    border-bottom: none;
+    animation: mobileModalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes mobileModalSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .modal-header {
+    padding: 16px 18px;
+  }
+
+  .modal-body {
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px)) 18px;
+    gap: 14px;
+  }
+
+  .metrics-table th,
+  .metrics-table td {
+    padding: 8px 10px;
+    font-size: 0.76rem;
+  }
+
+  /* Cesium Widget Mobile Overrides */
+  .cesium-widget-credits {
+    font-size: 8px !important;
+    bottom: 2px !important;
+    left: 2px !important;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Extra Compact Phones (width <= 400px, e.g. iPhone SE) */
+@media (max-width: 400px) {
+  .brand-wordmark {
+    font-size: 0.82rem;
+  }
+  .ml-status-text {
+    display: none;
+  }
+  .seg-tab {
+    padding: 5px 6px;
+    font-size: 0.68rem;
+  }
+  .glass-action-btn span {
+    font-size: 0.68rem;
   }
 }

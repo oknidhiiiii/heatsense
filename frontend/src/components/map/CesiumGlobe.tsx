@@ -283,6 +283,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
 
     viewer.scene.globe.enableLighting = false;
     viewer.scene.globe.depthTestAgainstTerrain = false;
+    viewer.canvas.style.touchAction = 'none';
 
     // Initial camera position framing Maharashtra pilot
     viewer.camera.setView({

@@ -24,7 +24,9 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 }) => {
   const [history, setHistory] = useState<HistoricalResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,7 +81,18 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 
   return (
     <div className={`apple-place-card ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="apple-card-top">
+      <div
+        className="apple-card-top"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsCollapsed(!isCollapsed);
+          }
+        }}
+      >
         <div className="place-info">
           <div className="place-location-row">
             <h3 className="place-title">{locationName}</h3>
@@ -101,8 +114,12 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 
         <button
           className="collapse-toggle-btn"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(!isCollapsed);
+          }}
           title={isCollapsed ? 'Expand Trend' : 'Collapse Card'}
+          aria-label={isCollapsed ? 'Expand Trend' : 'Collapse Card'}
         >
           {isCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
