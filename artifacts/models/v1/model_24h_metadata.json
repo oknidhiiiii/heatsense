@@ -1,0 +1,80 @@
+{
+  "model_id": "heatsense_rf_xgb_24h",
+  "model_version": "v1",
+  "horizon_hours": 24,
+  "algorithm": "XGBoostRegressor",
+  "created_at_utc": "2026-10-22T14:05:38.856716+00:00",
+  "target_variable": "temperature_c",
+  "target_unit": "degC",
+  "feature_columns": [
+    "latitude",
+    "longitude",
+    "hour_sin",
+    "hour_cos",
+    "doy_sin",
+    "doy_cos",
+    "temp_lag_0",
+    "temp_lag_1h",
+    "temp_lag_3h",
+    "temp_lag_6h",
+    "temp_lag_12h",
+    "temp_lag_24h",
+    "temp_rolling_mean_24h",
+    "temp_rolling_max_24h",
+    "temp_rolling_min_24h",
+    "dewpoint_lag_0",
+    "dewpoint_lag_6h",
+    "dewpoint_lag_24h",
+    "solar_lag_0",
+    "solar_lag_24h",
+    "wind_speed_lag_0"
+  ],
+  "training_samples": 547274,
+  "test_samples": 117390,
+  "training_period": {
+    "start": "2024-01-02 00:00:00",
+    "end": "2024-05-06 06:00:00"
+  },
+  "test_period": {
+    "start": "2024-06-02 03:00:00",
+    "end": "2024-06-28 23:00:00"
+  },
+  "metrics": {
+    "selected_model": {
+      "mae_c": 0.4014,
+      "rmse_c": 0.4983,
+      "bias_c": 0.2761
+    },
+    "baseline_persistence": {
+      "mae_c": 0.3671,
+      "rmse_c": 0.4608,
+      "bias_c": 0.1494
+    },
+    "baseline_diurnal": {
+      "mae_c": 0.4409,
+      "rmse_c": 0.5429,
+      "bias_c": 0.302
+    },
+    "random_forest": {
+      "mae_c": 0.4114,
+      "rmse_c": 0.5122,
+      "bias_c": 0.2713
+    },
+    "xgboost": {
+      "mae_c": 0.4014,
+      "rmse_c": 0.4983,
+      "bias_c": 0.2761
+    },
+    "extreme_heat_subset": {
+      "mae_c": 0.2896,
+      "rmse_c": 0.3603,
+      "bias_c": 0.0979
+    }
+  },
+  "limitations": [
+    "Trained on historical reanalysis without future exogenous atmospheric forcing.",
+    "Inference uses only information available at initialization time t.",
+    "Grid resolution is ~9 km (0.1 deg); does not represent street or micro-urban scale.",
+    "Model provides point temperature predictions; calibrated uncertainty intervals are not yet established."
+  ]
+}
