@@ -10,8 +10,12 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from heatsense_api.api.v1.health import router as health_router
+from heatsense_api.api.v1.locations import router as locations_router
+from heatsense_api.api.v1.models import router as models_router
+from heatsense_api.api.v1.weather import router as weather_router
 from heatsense_api.config import settings
 from heatsense_api.schemas.errors import ErrorDetail, ErrorResponse
+from heatsense_api.services.prediction_service import PredictionService
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -22,11 +26,22 @@ logger = logging.getLogger("heatsense_api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan: initialize services and predictors once."""
+    """Application lifespan: initialize prediction service and model bundle once."""
     logger.info("Initializing HeatSense API %s in %s mode...", settings.version, settings.env)
-    # Model loading state will be hooked up when artifacts exist
-    app.state.model_loaded = False
-    app.state.predictor = None
+
+    # Initialize PredictionService and load models once on startup
+    try:
+        pred_service = PredictionService()
+        app.state.prediction_service = pred_service
+        app.state.model_loaded = pred_service.is_ready
+        if pred_service.is_ready:
+            logger.info("HeatSense ML prediction service successfully loaded models for v1 (24h, 48h).")
+        else:
+            logger.warning("PredictionService initialized, but model artifacts were not fully loaded.")
+    except Exception as e:
+        logger.error("Failed to initialize PredictionService on startup: %s", e)
+        app.state.prediction_service = None
+        app.state.model_loaded = False
 
     yield
 
@@ -79,8 +94,11 @@ def create_app() -> FastAPI:
             ).model_dump(),
         )
 
-    # Register API routers
+    # Register API routers matching 06_API_CONTRACTS.md
     app.include_router(health_router, prefix=settings.api_prefix)
+    app.include_router(locations_router, prefix=settings.api_prefix)
+    app.include_router(models_router, prefix=settings.api_prefix)
+    app.include_router(weather_router, prefix=settings.api_prefix)
 
     return app
 

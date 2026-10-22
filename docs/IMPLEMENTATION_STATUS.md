@@ -3,7 +3,7 @@
 Updated: 2026-10-22
 
 ## Current stage
-- **Stage**: Stage 3 — ML Pipeline (Completed) -> Transitioning to Stage 4 (Backend API)
+- **Stage**: Stage 4 — Backend API (Completed) -> Transitioning to Stage 5 (Frontend & Geospatial Map)
 - **Lead**: HeatSense Lead Orchestrator
 - **Branch/revision**: `main`
 
@@ -13,10 +13,10 @@ Updated: 2026-10-22
 | Architecture & Scaffold | Lead Orchestrator | Complete | `backend/`, `frontend/`, `ml/`, `docs/adr/`, `pyproject.toml` | None | Scaffold tests pass, Vite build passes |
 | Data Engineering | Data Engineering Lead | Complete | `ml/src/heatsense_ml/data/`, `data/` | None | Manifest generated, 2.38M rows validated, 10 tests pass |
 | ML & Forecasting | ML Lead | Complete | `ml/src/heatsense_ml/features/`, `models/`, `training/`, `inference/` | None | XGBoost + RF trained; held-out MAE 0.40°C (24h) & 0.52°C (48h); Model Card generated |
-| Backend & API | Backend Lead | In Progress (Stage 4) | `backend/src/heatsense_api/` | None | Services, repositories, and routes in implementation |
-| Frontend & UX | Frontend Lead | Shell Ready (Stage 5) | `frontend/src/` | None | App shell & typed API client passing build |
-| Geospatial & Map | Geospatial Lead | Ready for Stage 5/6 | `frontend/src/components/map/` | None | Cesium + Carto adapter design confirmed |
-| QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | Pytest (13 passed), Ruff, Vite build verified |
+| Backend & API | Backend Lead | Complete | `backend/src/heatsense_api/` | None | All v1 endpoints implemented, 27 contract & unit tests pass |
+| Frontend & UX | Frontend Lead | In Progress (Stage 5) | `frontend/src/` | None | Building full UI with Cesium map, controls, charts |
+| Geospatial & Map | Geospatial Lead | In Progress (Stage 5/6) | `frontend/src/components/map/` | None | Cesium controller, camera flight, grid overlay |
+| QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | Pytest (27 passed), Ruff (clean), Vite build verified |
 
 ## Decisions and Architecture Records
 - **ADR 0001**: Mapping Engine — CesiumJS Globe with Abstracted Adapter (`docs/adr/0001-mapping-engine-cesium-with-fallback.md`)
