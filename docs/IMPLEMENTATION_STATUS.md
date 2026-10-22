@@ -1,22 +1,23 @@
 # HeatSense Implementation Status
 
 Updated: 2026-10-22
+Version: v0.1.0 (Release Candidate)
 
 ## Current stage
-- **Stage**: Stage 4 — Backend API (Completed) -> Transitioning to Stage 5 (Frontend & Geospatial Map)
+- **Stage**: Stage 8 — Final Handoff (Production-Ready Release Candidate)
 - **Lead**: HeatSense Lead Orchestrator
 - **Branch/revision**: `main`
 
 ## Workstreams
 | Workstream | Owner | Status | Files / Modules | Blockers | Tests / Evidence |
 |---|---|---|---|---|---|
-| Architecture & Scaffold | Lead Orchestrator | Complete | `backend/`, `frontend/`, `ml/`, `docs/adr/`, `pyproject.toml` | None | Scaffold tests pass, Vite build passes |
-| Data Engineering | Data Engineering Lead | Complete | `ml/src/heatsense_ml/data/`, `data/` | None | Manifest generated, 2.38M rows validated, 10 tests pass |
-| ML & Forecasting | ML Lead | Complete | `ml/src/heatsense_ml/features/`, `models/`, `training/`, `inference/` | None | XGBoost + RF trained; held-out MAE 0.40°C (24h) & 0.52°C (48h); Model Card generated |
-| Backend & API | Backend Lead | Complete | `backend/src/heatsense_api/` | None | All v1 endpoints implemented, 27 contract & unit tests pass |
-| Frontend & UX | Frontend Lead | In Progress (Stage 5) | `frontend/src/` | None | Building full UI with Cesium map, controls, charts |
-| Geospatial & Map | Geospatial Lead | In Progress (Stage 5/6) | `frontend/src/components/map/` | None | Cesium controller, camera flight, grid overlay |
-| QA, DevOps & Security | QA/DevOps Lead | Active | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | Pytest (27 passed), Ruff (clean), Vite build verified |
+| Architecture & Scaffold | Lead Orchestrator | Complete | `backend/`, `frontend/`, `ml/`, `docs/adr/`, `pyproject.toml` | None | Scaffold tests pass, monorepo configuration verified |
+| Data Engineering | Data Engineering Lead | Complete | `ml/src/heatsense_ml/data/`, `data/` | None | Manifest generated, 2.38M rows validated, 10 data pipeline tests pass |
+| ML & Forecasting | ML Lead | Complete | `ml/src/heatsense_ml/features/`, `models/`, `training/`, `inference/` | None | XGBoost (+24h, MAE 0.401°C) & Random Forest (+48h, MAE 0.525°C) trained; held-out verification passed; Model Card generated |
+| Backend & API | Backend Lead | Complete | `backend/src/heatsense_api/` | None | All v1 endpoints implemented (`/health`, `/locations/search`, `/history`, `/predictions`, `/map/grid`, `/models/metrics`), API contract tests pass |
+| Frontend & UX | Frontend Lead | Complete | `frontend/src/` | None | Responsive layout, autocomplete search, layer toggles, Recharts history drawer, cell inspector, metrics modal |
+| Geospatial & Map | Geospatial Lead | Complete | `frontend/src/components/map/` | None | CesiumJS globe with Carto Dark Matter raster basemap, ellipsoid terrain, smooth animated flights, dynamic thermal polygon grid, interactive picking |
+| QA, DevOps & Security | QA/DevOps Lead | Complete | `tests/`, `docker-compose.yml`, `Dockerfile.*` | None | 28/28 pytest pass (79% coverage), mypy clean (33 files), ruff clean, frontend build clean, live smoke test pass |
 
 ## Decisions and Architecture Records
 - **ADR 0001**: Mapping Engine — CesiumJS Globe with Abstracted Adapter (`docs/adr/0001-mapping-engine-cesium-with-fallback.md`)
@@ -27,30 +28,15 @@ Updated: 2026-10-22
 - **ADR 0006**: Python Runtime and Environment Pinning (`docs/adr/0006-python-runtime-and-environment-pinning.md`)
 - **ADR 0007**: Deferral of Database (PostgreSQL/PostGIS) and Health Risk Layer Scope (`docs/adr/0007-deferral-of-database-and-risk-layer-scope.md`)
 
-## Test report
-- **Command**: `python3 --version`, `node --version`, `npm --version`, `uv --version`, `uv python list`, `free -h`, `df -h .`
-- **Actual result**:
-  - Python: 3.14.7 default; CPython 3.12.13 available and managed via uv at `/home/adityap/.local/share/uv/python/cpython-3.12-linux-x86_64-gnu/bin/python3.12`
-  - Node.js: v24.19.0, npm: 11.19.0
-  - Hardware: AMD Ryzen 9 5900HS (16 vCPUs), 15 GiB RAM, 459 GiB available disk space
-  - Git repository: Initialized and branch set to `main`
-- **Failures/skips**: None.
+## Verification & Test Reports
+- **Unit & Integration Tests**: 28 passed in 3.10s (`.venv/bin/pytest -v`)
+- **Type Checking**: 0 errors across 33 source files (`.venv/bin/mypy backend/src ml/src tests`)
+- **Code Linter**: Clean (`.venv/bin/ruff check .`)
+- **Frontend Production Build**: `npm run build` exits 0 (TypeScript compile + Vite bundle in 2.46s)
+- **Deployment Smoke Test**: Verified live against running uvicorn instance on all endpoints (`/health`, `/locations/search`, `/history`, `/predictions`, `/map/grid`, `/models/metrics`)
 
-## Risks and Mitigations
-1. **Forecast skill without future forcing**: Atmospheric reanalysis alone lacks future solar/wind forcing.
-   *Mitigation*: Direct multi-horizon regressors (t+24, t+48) leveraging 24h solar cyclic features; evaluated chronologically against diurnal persistence with transparent limitation disclosure.
-2. **Data scale and RAM pressure**: Full India ERA5-Land is multi-gigabyte.
-   *Mitigation*: ADR 0004 establishes Maharashtra/Western India pilot bounding box (546 grid cells, ~35 MB Parquet).
-3. **CesiumJS token & licensing**: Ion requires credentials for default terrain/assets.
-   *Mitigation*: ADR 0001 establishes an abstracted adapter with open basemap fallback (OpenStreetMap/Carto) and WGS84 ellipsoid.
-4. **Binary wheel stability on bleeding-edge Python**:
-   *Mitigation*: ADR 0006 pins Python 3.12 via `uv` virtualenv for robust scientific wheel support.
-
-## Next actions
-- Transition to **Stage 1 — Architecture Scaffold**:
-  1. Initialize `pyproject.toml` and `.venv` with Python 3.12 and dependencies.
-  2. Create directory structure (`backend/`, `frontend/`, `ml/`, `tests/`, `data/`, `artifacts/`).
-  3. Create `.gitignore` and `.env.example`.
-  4. Build FastAPI application shell with typed config and `/api/v1/health`.
-  5. Initialize Frontend React + TypeScript + Vite project shell.
-  6. Add root test/lint scripts and verify that backend starts and frontend builds cleanly.
+## Operational Constraints & Risk Ledger
+1. **Forecast Information Horizon**: Atmospheric models generate predictions without future exogenous solar radiation or synoptic advection observations. Zero future leakage is strictly enforced.
+2. **Coarse Resolution**: Native ~9 km grid (0.1°) cannot resolve street-canyon or micro-urban scale effects.
+3. **No Hidden External Weather Ingestion**: All displayed predictions are produced strictly by HeatSense-trained models.
+4. **Token-free Geospatial Fallback**: CesiumJS defaults to open Carto Dark Matter raster tiles on WGS84 ellipsoid with optional Cesium Ion token override.

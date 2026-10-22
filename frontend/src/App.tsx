@@ -1,92 +1,115 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './App.css';
 import { api } from './services/api';
-import { HealthResponse } from './types/api';
+import {
+  GridCell,
+  HealthResponse,
+  LayerType,
+  LocationItem,
+  MapGridResponse,
+} from './types/api';
+import { Header } from './components/controls/Header';
+import { CesiumGlobe } from './components/map/CesiumGlobe';
+import { Legend } from './components/map/Legend';
+import { HistoryChart } from './components/charts/HistoryChart';
+import { CellInspector } from './components/inspector/CellInspector';
+import { MetricsModal } from './components/models/MetricsModal';
 
 export const App: React.FC = () => {
+  const [selectedLocation, setSelectedLocation] = useState<LocationItem | null>(null);
+  const [activeLayer, setActiveLayer] = useState<LayerType>('forecast24');
+  const [gridData, setGridData] = useState<MapGridResponse | null>(null);
+  const [selectedCell, setSelectedCell] = useState<GridCell | null>(null);
+  const [isLoadingGrid, setIsLoadingGrid] = useState(false);
+  const [isMetricsOpen, setIsMetricsOpen] = useState(false);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Check backend health on startup
+  useEffect(() => {
+    api.getHealth()
+      .then(setHealth)
+      .catch(() => {});
+  }, []);
+
+  // Fetch regional map grid whenever layer or selected location changes
   useEffect(() => {
     const controller = new AbortController();
-    api.getHealth(controller.signal)
+    setIsLoadingGrid(true);
+
+    const regionId = selectedLocation ? selectedLocation.id : 'state_IN_MH';
+    const bbox = selectedLocation?.bbox;
+
+    api.getGridLayer(regionId, activeLayer, bbox, controller.signal)
       .then((data) => {
-        setHealth(data);
-        setLoading(false);
+        setGridData(data);
+        setIsLoadingGrid(false);
       })
       .catch((err) => {
         if (err.name !== 'AbortError') {
-          setError(err.message || 'Failed to connect to HeatSense API');
-          setLoading(false);
+          setIsLoadingGrid(false);
         }
       });
 
     return () => {
       controller.abort();
     };
+  }, [activeLayer, selectedLocation]);
+
+  const handleCellSelect = useCallback((cell: GridCell | null) => {
+    setSelectedCell(cell);
   }, []);
+
+  const activeLat = selectedCell?.latitude ?? selectedLocation?.latitude ?? 18.93;
+  const activeLon = selectedCell?.longitude ?? selectedLocation?.longitude ?? 72.83;
+  const activeName = selectedCell
+    ? `Grid Cell ${selectedCell.id}`
+    : selectedLocation?.name ?? 'Mumbai Region';
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        <div className="brand-section">
-          <span className="brand-title">HeatSense</span>
-          <span className="brand-badge">India Pilot v0.1</span>
-        </div>
-
-        <div className="header-status">
-          <div className="status-indicator">
-            <span
-              className={`status-dot ${loading ? 'loading' : error ? 'error' : ''}`}
-              title={error ? error : loading ? 'Checking API...' : 'API Operational'}
-            />
-            <span>
-              {loading
-                ? 'Connecting API...'
-                : error
-                ? 'API Disconnected'
-                : `API v${health?.version || '0.1.0'} (Active)`}
-            </span>
-          </div>
-          {health && (
-            <span className="brand-badge">
-              Regions: {health.supported_regions.join(', ')}
-            </span>
-          )}
-        </div>
-      </header>
+      <Header
+        health={health}
+        selectedLocation={selectedLocation}
+        onSelectLocation={(loc) => {
+          setSelectedLocation(loc);
+          setSelectedCell(null);
+        }}
+        activeLayer={activeLayer}
+        onSelectLayer={setActiveLayer}
+        onOpenMetrics={() => setIsMetricsOpen(true)}
+      />
 
       <main className="main-content">
-        <div className="map-placeholder-view">
-          <div className="map-card">
-            <h2>HeatSense Geospatial Intelligence</h2>
-            <p>
-              Interactive heat intelligence platform combining historical climate reanalysis (ERA5-Land)
-              and HeatSense-trained ML models for +24h and +48h temperature forecasting.
-            </p>
+        <CesiumGlobe
+          selectedLocation={selectedLocation}
+          gridData={gridData}
+          selectedCell={selectedCell}
+          onCellSelect={handleCellSelect}
+          isLoading={isLoadingGrid}
+        />
 
-            <div className="feature-grid">
-              <div className="feature-item">
-                <div className="title">Target Geography</div>
-                <div className="value">India (Maharashtra Pilot Domain)</div>
-              </div>
-              <div className="feature-item">
-                <div className="title">Forecast Horizons</div>
-                <div className="value">+24h & +48h Air Temp (°C)</div>
-              </div>
-              <div className="feature-item">
-                <div className="title">Model Engine</div>
-                <div className="value">Random Forest & XGBoost</div>
-              </div>
-              <div className="feature-item">
-                <div className="title">Grid Resolution</div>
-                <div className="value">~9 km (0.1° ERA5-Land Native)</div>
-              </div>
-            </div>
-          </div>
+        <Legend layer={activeLayer} gridData={gridData} />
+
+        <CellInspector
+          cell={selectedCell}
+          layer={activeLayer}
+          gridData={gridData}
+          onClose={() => setSelectedCell(null)}
+        />
+
+        <div className="bottom-chart-dock">
+          <HistoryChart
+            latitude={activeLat}
+            longitude={activeLon}
+            locationName={activeName}
+          />
         </div>
       </main>
+
+      <MetricsModal
+        isOpen={isMetricsOpen}
+        onClose={() => setIsMetricsOpen(false)}
+      />
     </div>
   );
 };

@@ -64,11 +64,19 @@ class WeatherGridRepository:
         self._ensure_loaded()
         assert self._df is not None
 
+        start_dt = pd.to_datetime(start_time)
+        if getattr(start_dt, "tzinfo", None) is not None:
+            start_dt = start_dt.tz_localize(None)
+
+        end_dt = pd.to_datetime(end_time)
+        if getattr(end_dt, "tzinfo", None) is not None:
+            end_dt = end_dt.tz_localize(None)
+
         cell_id, cell_lat, cell_lon = self.find_nearest_cell(lat, lon)
         cell_mask = self._df["grid_cell_id"] == cell_id
 
         # Filter by time range
-        time_mask = (self._df["time"] >= start_time) & (self._df["time"] <= end_time)
+        time_mask = (self._df["time"] >= start_dt) & (self._df["time"] <= end_dt)
         subset = self._df[cell_mask & time_mask].sort_values("time")
 
         points = [
@@ -115,9 +123,15 @@ class WeatherGridRepository:
 
         # If no valid_at timestamp given, pick the latest available timestamp
         if valid_at is None:
-            valid_at = str(self._df["time"].max())
+            valid_dt = self._df["time"].max()
+            valid_at_str = str(valid_dt)
+        else:
+            valid_dt = pd.to_datetime(valid_at)
+            if getattr(valid_dt, "tzinfo", None) is not None:
+                valid_dt = valid_dt.tz_localize(None)
+            valid_at_str = str(valid_dt)
 
-        time_df = self._df[self._df["time"] == valid_at]
+        time_df = self._df[self._df["time"] == valid_dt]
 
         # Apply bounding box filter if provided: [min_lat, min_lon, max_lat, max_lon]
         if bbox and len(bbox) == 4:
@@ -163,7 +177,7 @@ class WeatherGridRepository:
             region_id=region_id,
             layer="historical",
             unit="degC",
-            valid_at=valid_at,
+            valid_at=valid_at_str,
             source_id="ERA5-Land",
             source_version="v1",
             grid_definition=GridDefinition(

@@ -35,7 +35,7 @@ def split_chronologically(
     df: pd.DataFrame,
     train_ratio: float = 0.70,
     val_ratio: float = 0.15,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, str]]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """Split dataset chronologically by unique timestamps (no random row mixing)."""
     timestamps = pd.Series(df["time"].unique()).sort_values().reset_index(drop=True)
     n_total = len(timestamps)
@@ -107,9 +107,10 @@ def run_training_and_evaluation(
     X_test = test_df[feature_cols]
 
     artifacts_dir.mkdir(parents=True, exist_ok=True)
-    all_evaluation_results = {
+    horizons_results: Dict[str, Any] = {}
+    all_evaluation_results: Dict[str, Any] = {
         "split_info": split_info,
-        "horizons": {},
+        "horizons": horizons_results,
     }
 
     for horizon in [24, 48]:
@@ -230,13 +231,13 @@ def run_training_and_evaluation(
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
 
-        all_evaluation_results["horizons"][f"{horizon}h"] = meta
+        horizons_results[f"{horizon}h"] = meta
 
     # Write Model Card Markdown (MODEL_CARD.md)
     model_card_path = artifacts_dir / "MODEL_CARD.md"
     with open(model_card_path, "w", encoding="utf-8") as f:
-        m24 = all_evaluation_results["horizons"]["24h"]
-        m48 = all_evaluation_results["horizons"]["48h"]
+        m24: Dict[str, Any] = horizons_results["24h"]
+        m48: Dict[str, Any] = horizons_results["48h"]
         f.write(rf"""# HeatSense Model Card (Version {m24["model_version"]})
 
 ## 1. Model Overview

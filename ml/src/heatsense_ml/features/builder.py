@@ -4,7 +4,7 @@ Strictly enforces causal ordering: features at initialization timestamp t
 only use observations <= t. Future observations are NEVER accessed.
 """
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -37,13 +37,11 @@ FEATURE_COLUMNS = [
 
 def extract_causal_features_for_cell(cell_df: pd.DataFrame) -> pd.DataFrame:
     """Extract causal features for a single contiguous grid cell sorted by time."""
-    df = cell_df.copy()
-    df.sort_values("time", inplace=True)
-    df.reset_index(drop=True, inplace=True)
+    df = cell_df.sort_values("time").reset_index(drop=True)
 
     times = pd.to_datetime(df["time"])
     hours = times.dt.hour.values
-    doy = times.dt.dayofyear.values
+    doy = getattr(times.dt, "day_of_year", times.dt.dayofyear).values
 
     # Cyclic astronomical & calendar encodings
     df["hour_sin"] = np.sin(2 * np.pi * hours / 24.0).astype(np.float32)
@@ -92,7 +90,7 @@ def extract_causal_features_for_cell(cell_df: pd.DataFrame) -> pd.DataFrame:
 
 def build_feature_dataset(
     weather_df: pd.DataFrame,
-    horizons: List[int] = None,
+    horizons: Optional[List[int]] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
     """Build causal feature matrix from weather dataframe across all grid cells.
 
@@ -116,7 +114,6 @@ def build_feature_dataset(
         feature_dfs.append(cell_features[valid_mask])
 
     full_features_df = pd.concat(feature_dfs, ignore_index=True)
-    full_features_df.sort_values(["time", "grid_cell_id"], inplace=True)
-    full_features_df.reset_index(drop=True, inplace=True)
+    full_features_df = full_features_df.sort_values(["time", "grid_cell_id"]).reset_index(drop=True)
 
     return full_features_df, FEATURE_COLUMNS

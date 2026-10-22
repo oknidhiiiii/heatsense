@@ -1,6 +1,6 @@
 """Data quality validation and reporting utilities."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ def validate_weather_dataframe(
     df: pd.DataFrame,
     min_temp_c: float = -10.0,
     max_temp_c: float = 65.0,
-    required_cols: List[str] = None,
+    required_cols: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Validate tabular weather dataset for completeness, monotonicity, and bounds.
 
