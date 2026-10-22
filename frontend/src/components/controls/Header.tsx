@@ -56,6 +56,16 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [searchQuery]);
 
+  // Sync search input when selected location changes from map clicks or pills
+  useEffect(() => {
+    if (selectedLocation) {
+      setSearchQuery(selectedLocation.name);
+      setIsOpen(false);
+    } else {
+      setSearchQuery('');
+    }
+  }, [selectedLocation]);
+
   // Click outside listener to close dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
