@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { GridCell, LocationItem, MapGridResponse } from '../../types/api';
-import { getTemperatureHex } from '../../utils/colorScale';
+import { getTemperatureRgb } from '../../utils/colorScale';
 import { CITIES_DATA, CityData, findCityById, getCityAtLocation } from '../../utils/cityBoundaries';
 
 // Set Cesium Ion token if configured
@@ -31,10 +31,8 @@ function getCartographicFromScreen(
   viewer: Cesium.Viewer,
   position: Cesium.Cartesian2
 ): { lat: number; lon: number } | null {
-  // 1. Pick ellipsoid (fast and reliable on EllipsoidTerrainProvider)
   let cartesian = viewer.camera.pickEllipsoid(position, viewer.scene.globe.ellipsoid);
 
-  // 2. Fallback to ray casting against globe
   if (!cartesian) {
     const ray = viewer.camera.getPickRay(position);
     if (ray) {
@@ -86,6 +84,142 @@ function flyToCity(viewer: Cesium.Viewer, city: CityData) {
   }
 }
 
+function generateContinuousHeatmapCanvas(
+  gridData: MapGridResponse,
+  targetBbox: [number, number, number, number],
+  boundaryPolygons: [number, number][][]
+): HTMLCanvasElement | null {
+  const [minLat, minLon, maxLat, maxLon] = targetBbox;
+  if (maxLat <= minLat || maxLon <= minLon) return null;
+
+  const validCells = gridData.cells.filter(
+    (c): c is GridCell & { value: number } => c.value !== null && !isNaN(c.value)
+  );
+  if (validCells.length === 0) return null;
+
+  const temps = validCells.map((c) => c.value);
+  const minT = Math.min(...temps);
+  const maxT = Math.max(...temps);
+
+  // 1. Determine grid spatial bounds
+  const cellLats = validCells.map((c) => c.latitude);
+  const cellLons = validCells.map((c) => c.longitude);
+  const gMinLat = Math.min(...cellLats);
+  const gMaxLat = Math.max(...cellLats);
+  const gMinLon = Math.min(...cellLons);
+  const gMaxLon = Math.max(...cellLons);
+
+  const res = gridData.grid_definition?.resolution_deg || 0.1;
+  const cols = Math.max(2, Math.min(64, Math.round((gMaxLon - gMinLon) / res) + 1));
+  const rows = Math.max(2, Math.min(64, Math.round((gMaxLat - gMinLat) / res) + 1));
+
+  // 2. Offscreen grid canvas to capture raw thermal points
+  const coarseCanvas = document.createElement('canvas');
+  coarseCanvas.width = cols;
+  coarseCanvas.height = rows;
+  const coarseCtx = coarseCanvas.getContext('2d');
+  if (!coarseCtx) return null;
+
+  const imgData = coarseCtx.createImageData(cols, rows);
+  const data = imgData.data;
+  const gridVals = new Float32Array(cols * rows).fill(NaN);
+
+  for (const cell of validCells) {
+    const c = Math.round(((cell.longitude - gMinLon) / (gMaxLon - gMinLon || 1)) * (cols - 1));
+    const r = Math.round(((gMaxLat - cell.latitude) / (gMaxLat - gMinLat || 1)) * (rows - 1));
+    if (c >= 0 && c < cols && r >= 0 && r < rows) {
+      gridVals[r * cols + c] = cell.value;
+    }
+  }
+
+  // Nearest-neighbor fill for any unassigned pixels
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      let val = gridVals[idx];
+      if (isNaN(val)) {
+        let bestDist = Infinity;
+        let bestVal = (minT + maxT) / 2;
+        for (let dr = -3; dr <= 3; dr++) {
+          for (let dc = -3; dc <= 3; dc++) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+              const nVal = gridVals[nr * cols + nc];
+              if (!isNaN(nVal)) {
+                const dist = dr * dr + dc * dc;
+                if (dist < bestDist) {
+                  bestDist = dist;
+                  bestVal = nVal;
+                }
+              }
+            }
+          }
+        }
+        val = bestVal;
+      }
+
+      const [red, green, blue] = getTemperatureRgb(val, minT, maxT);
+      const pIdx = idx * 4;
+      data[pIdx] = red;
+      data[pIdx + 1] = green;
+      data[pIdx + 2] = blue;
+      data[pIdx + 3] = 230;
+    }
+  }
+
+  coarseCtx.putImageData(imgData, 0, 0);
+
+  // 3. Main canvas with hardware bilinear upscaling and stencil boundary clipping
+  const mainCanvas = document.createElement('canvas');
+  const width = 512;
+  const height = 512;
+  mainCanvas.width = width;
+  mainCanvas.height = height;
+  const ctx = mainCanvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.save();
+
+  // Draw clipping stencil path
+  ctx.beginPath();
+  let hasValidPoly = false;
+  for (const poly of boundaryPolygons) {
+    if (!poly || poly.length < 3) continue;
+    for (let i = 0; i < poly.length; i++) {
+      const [lon, lat] = poly[i];
+      const x = ((lon - minLon) / (maxLon - minLon)) * width;
+      const y = ((maxLat - lat) / (maxLat - minLat)) * height;
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.closePath();
+    hasValidPoly = true;
+  }
+
+  if (hasValidPoly) {
+    ctx.clip();
+  }
+
+  // Draw bilinear coarse grid scaled to geographic coordinates
+  const gx = ((gMinLon - minLon) / (maxLon - minLon)) * width;
+  const gy = ((maxLat - gMaxLat) / (maxLat - minLat)) * height;
+  const gw = ((gMaxLon - gMinLon) / (maxLon - minLon)) * width;
+  const gh = ((gMaxLat - gMinLat) / (maxLat - minLat)) * height;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.filter = 'blur(4px)';
+  ctx.drawImage(coarseCanvas, gx, gy, gw, gh);
+
+  ctx.restore();
+
+  return mainCanvas;
+}
+
 interface CesiumGlobeProps {
   selectedLocation: LocationItem | null;
   gridData: MapGridResponse | null;
@@ -114,8 +248,13 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   const gridDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
   const cityBoundaryDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
   const cityEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
+  const heatImageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+  const basemapLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+
   const lastHoveredRef = useRef<string | null>(null);
   const lastFlownLocationIdRef = useRef<string | null>(null);
+  const gridDataRef = useRef<MapGridResponse | null>(gridData);
+  gridDataRef.current = gridData;
 
   // 1. Initialize Cesium Viewer (runs ONCE on mount)
   useEffect(() => {
@@ -137,6 +276,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       selectionIndicator: false,
       fullscreenButton: false,
     });
+
+    if (viewer.imageryLayers.length > 0) {
+      basemapLayerRef.current = viewer.imageryLayers.get(0);
+    }
 
     viewer.scene.globe.enableLighting = false;
     viewer.scene.globe.depthTestAgainstTerrain = false;
@@ -166,7 +309,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         cartesianPoints.push(Cesium.Cartesian3.fromDegrees(lon, lat));
       });
 
-      // Sleek polyline border (pure border outline)
+      // Sleek polyline border
       const borderEntity = cityDs.entities.add({
         id: `border_${city.id}`,
         properties: {
@@ -195,36 +338,38 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       let targetCity: CityData | null = null;
       let targetCell: GridCell | null = null;
 
-      // 1. Check picked entity directly
-      const picked = viewer.scene.pick(movement.position);
-      if (Cesium.defined(picked) && picked.id && picked.id.properties) {
-        if (picked.id.properties.cityId) {
-          const cId = picked.id.properties.cityId.getValue();
-          targetCity = findCityById(cId) ?? null;
-        }
-        if (picked.id.properties.cellData) {
-          targetCell = picked.id.properties.cellData.getValue();
+      // Check geographic coordinates via point-in-polygon
+      const coords = getCartographicFromScreen(viewer, movement.position);
+      if (coords) {
+        targetCity = getCityAtLocation(coords.lat, coords.lon);
+
+        const currentGrid = gridDataRef.current;
+        if (currentGrid && currentGrid.cells) {
+          targetCell =
+            currentGrid.cells.find((c) => {
+              if (c.bounds) {
+                const [minLat, minLon, maxLat, maxLon] = c.bounds;
+                return (
+                  coords.lat >= minLat &&
+                  coords.lat <= maxLat &&
+                  coords.lon >= minLon &&
+                  coords.lon <= maxLon
+                );
+              }
+              return (
+                Math.abs(c.latitude - coords.lat) <= 0.05 &&
+                Math.abs(c.longitude - coords.lon) <= 0.05
+              );
+            }) ?? null;
         }
       }
 
-      // 2. If no city picked directly from polyline, check geographic coordinates via point-in-polygon
-      if (!targetCity) {
-        const coords = getCartographicFromScreen(viewer, movement.position);
-        if (coords) {
-          targetCity = getCityAtLocation(coords.lat, coords.lon);
-        }
-      }
-
-      // 3. If clicked inside any city area, fly to it immediately and notify React
+      // If clicked inside any city area, fly to it immediately and notify React
       if (targetCity) {
         lastFlownLocationIdRef.current = targetCity.id;
         flyToCity(viewer, targetCity);
         onCitySelect(targetCity);
-        if (targetCell) {
-          onCellSelect(targetCell);
-        } else {
-          onCellSelect(null);
-        }
+        onCellSelect(targetCell);
         return;
       }
 
@@ -240,22 +385,11 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
       let hoveredId: string | null = null;
 
-      // 1. Check direct entity pick (e.g. cursor directly over polyline border)
-      const picked = viewer.scene.pick(movement.endPosition);
-      if (Cesium.defined(picked) && picked.id && picked.id.properties) {
-        if (picked.id.properties.cityId) {
-          hoveredId = picked.id.properties.cityId.getValue();
-        }
-      }
-
-      // 2. If not on border line, check if cursor is anywhere inside the city polygon area
-      if (!hoveredId) {
-        const coords = getCartographicFromScreen(viewer, movement.endPosition);
-        if (coords) {
-          const city = getCityAtLocation(coords.lat, coords.lon);
-          if (city) {
-            hoveredId = city.id;
-          }
+      const coords = getCartographicFromScreen(viewer, movement.endPosition);
+      if (coords) {
+        const city = getCityAtLocation(coords.lat, coords.lon);
+        if (city) {
+          hoveredId = city.id;
         }
       }
 
@@ -278,7 +412,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     };
   }, [onCellSelect, onCityHover, onCitySelect]);
 
-  // 2. Ultra-smooth border update on hover (mutates existing entity properties in place: white in dark mode, black in light mode)
+  // 2. Ultra-smooth border update on hover (white in dark mode, black in light mode)
   useEffect(() => {
     const cache = cityEntitiesRef.current;
     if (!cache) return;
@@ -298,14 +432,14 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         const highlightColor = isDarkMode ? Cesium.Color.WHITE : Cesium.Color.BLACK;
         borderEntity.polyline.material = new Cesium.ColorMaterialProperty(highlightColor);
       } else if (isSelected) {
-        // Selected city border: Crisp white in dark mode, crisp black in light mode
+        // Selected city border
         borderEntity.polyline.width = new Cesium.ConstantProperty(2.5);
         const selectedColor = isDarkMode
           ? Cesium.Color.WHITE.withAlpha(0.85)
           : Cesium.Color.BLACK.withAlpha(0.85);
         borderEntity.polyline.material = new Cesium.ColorMaterialProperty(selectedColor);
       } else {
-        // Subtle resting border: Semi-transparent white in dark mode, semi-transparent black in light mode
+        // Subtle resting border
         borderEntity.polyline.width = new Cesium.ConstantProperty(1.5);
         const restingColor = isDarkMode
           ? Cesium.Color.WHITE.withAlpha(0.28)
@@ -315,34 +449,26 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     });
   }, [hoveredCityId, selectedLocation, basemap]);
 
-  // 3. Basemap switching without clearing to 0 layers (prevents Cesium Ion token prompt)
+  // 3. Basemap switching without clearing to 0 layers
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || ION_TOKEN) return;
 
     const newProvider = createImageryProvider(basemap);
-    const newLayer = viewer.imageryLayers.addImageryProvider(newProvider);
+    const newLayer = viewer.imageryLayers.addImageryProvider(newProvider, 0);
 
-    setTimeout(() => {
-      if (!viewer.isDestroyed()) {
-        while (viewer.imageryLayers.length > 1) {
-          const oldLayer = viewer.imageryLayers.get(0);
-          if (oldLayer !== newLayer) {
-            viewer.imageryLayers.remove(oldLayer);
-          } else {
-            break;
-          }
-        }
-      }
-    }, 150);
+    const oldLayer = basemapLayerRef.current;
+    if (oldLayer && oldLayer !== newLayer) {
+      viewer.imageryLayers.remove(oldLayer);
+    }
+    basemapLayerRef.current = newLayer;
   }, [basemap]);
 
-  // 4. Camera flight to selected location (for search dropdown or pill navigation)
+  // 4. Camera flight to selected location
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
 
-    // Skip if flight was already initiated by direct click on the area
     if (selectedLocation && selectedLocation.id === lastFlownLocationIdRef.current) {
       return;
     }
@@ -387,89 +513,93 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     }
   }, [selectedLocation]);
 
-  // 5. Render city-wise heatmaps (filters ocean cells and applies dynamic thermal normalization)
+  // 5A. Render continuous thermal heatmap strictly clipped to city or state boundary
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    // Remove previous heatmap layer
+    if (heatImageryLayerRef.current) {
+      viewer.imageryLayers.remove(heatImageryLayerRef.current);
+      heatImageryLayerRef.current = null;
+    }
+
+    if (!gridData || !gridData.cells || gridData.cells.length === 0) {
+      return;
+    }
+
+    // Determine target bounding box and boundary polygons
+    let targetBbox: [number, number, number, number];
+    let boundaryPolygons: [number, number][][];
+
+    if (selectedLocation) {
+      const city = findCityById(selectedLocation.id);
+      if (city) {
+        targetBbox = city.bbox;
+        boundaryPolygons = [city.polygonCoordinates];
+      } else if (selectedLocation.bbox) {
+        targetBbox = selectedLocation.bbox;
+        boundaryPolygons = [];
+      } else {
+        targetBbox = [17.8, 72.7, 20.3, 75.2];
+        boundaryPolygons = [];
+      }
+    } else {
+      // Overview mode: clip continuous heatmap strictly to active Maharashtra districts
+      const pilotCities = CITIES_DATA.filter((c) => {
+        if (c.state !== 'Maharashtra') return false;
+        const [cMinLat, cMinLon, cMaxLat, cMaxLon] = c.bbox;
+        return !(cMaxLat < 17.8 || cMinLat > 20.3 || cMaxLon < 72.7 || cMinLon > 75.2);
+      });
+
+      targetBbox = [17.89, 72.75, 20.15, 75.15];
+      boundaryPolygons = pilotCities.map((c) => c.polygonCoordinates);
+    }
+
+    const canvas = generateContinuousHeatmapCanvas(gridData, targetBbox, boundaryPolygons);
+    if (!canvas) return;
+
+    const [minLat, minLon, maxLat, maxLon] = targetBbox;
+    const rectangle = Cesium.Rectangle.fromDegrees(minLon, minLat, maxLon, maxLat);
+
+    const heatProvider = new Cesium.SingleTileImageryProvider({
+      url: canvas.toDataURL(),
+      rectangle,
+      tileWidth: 512,
+      tileHeight: 512,
+    });
+
+    const heatLayer = viewer.imageryLayers.addImageryProvider(heatProvider);
+    heatLayer.alpha = 0.82;
+    heatImageryLayerRef.current = heatLayer;
+  }, [gridData, selectedLocation]);
+
+  // 5B. Render inspected cell reticle outline
   useEffect(() => {
     const dataSource = gridDataSourceRef.current;
     if (!dataSource) return;
 
     dataSource.entities.removeAll();
 
-    if (!gridData || !gridData.cells || gridData.cells.length === 0) {
-      return;
-    }
-
-    // A. Filter out offshore open ocean cells
-    let activeCells = gridData.cells.filter((cell) => {
-      if (cell.latitude < 19.35 && cell.longitude < 72.75) {
-        return false;
-      }
-      return true;
-    });
-
-    // B. Focus heat grid on city domains
-    if (selectedLocation && selectedLocation.bbox) {
-      const [minLat, minLon, maxLat, maxLon] = selectedLocation.bbox;
-      activeCells = activeCells.filter(
-        (c) =>
-          c.latitude >= minLat - 0.05 &&
-          c.latitude <= maxLat + 0.05 &&
-          c.longitude >= minLon - 0.05 &&
-          c.longitude <= maxLon + 0.05
-      );
-    } else {
-      activeCells = activeCells.filter((c) =>
-        CITIES_DATA.some((city) => {
-          const [cMinLat, cMinLon, cMaxLat, cMaxLon] = city.bbox;
-          return (
-            c.latitude >= cMinLat - 0.12 &&
-            c.latitude <= cMaxLat + 0.12 &&
-            c.longitude >= cMinLon - 0.12 &&
-            c.longitude <= cMaxLon + 0.12
-          );
-        })
-      );
-    }
-
-    // C. Dynamic temperature normalization
-    const temps = activeCells
-      .map((c) => c.value)
-      .filter((v): v is number => v !== null);
-    const minT = temps.length > 0 ? Math.min(...temps) : 18;
-    const maxT = temps.length > 0 ? Math.max(...temps) : 35;
-
-    const isSelected = (c: GridCell) => selectedCell && selectedCell.id === c.id;
-
-    activeCells.forEach((cell) => {
-      if (!cell.bounds) return;
-      const [minLat, minLon, maxLat, maxLon] = cell.bounds;
-      const hexColor =
-        cell.value !== null ? getTemperatureHex(cell.value, minT, maxT) : '#4a5568';
-      const alpha = isSelected(cell) ? 0.95 : 0.70;
-      const outlineColor = isSelected(cell)
-        ? Cesium.Color.WHITE
-        : Cesium.Color.BLACK.withAlpha(0.2);
-
+    if (selectedCell && selectedCell.bounds) {
+      const [minLat, minLon, maxLat, maxLon] = selectedCell.bounds;
       dataSource.entities.add({
-        id: cell.id,
-        properties: {
-          cellData: cell,
-        },
-        polygon: {
-          hierarchy: Cesium.Cartesian3.fromDegreesArray([
+        id: `reticle_${selectedCell.id}`,
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray([
             minLon, minLat,
             maxLon, minLat,
             maxLon, maxLat,
             minLon, maxLat,
+            minLon, minLat,
           ]),
-          material: Cesium.Color.fromCssColorString(hexColor).withAlpha(alpha),
-          outline: true,
-          outlineColor,
-          outlineWidth: isSelected(cell) ? 3 : 1,
-          height: 0,
+          width: 2.5,
+          material: Cesium.Color.WHITE,
+          clampToGround: true,
         },
       });
-    });
-  }, [gridData, selectedCell, selectedLocation]);
+    }
+  }, [selectedCell]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
