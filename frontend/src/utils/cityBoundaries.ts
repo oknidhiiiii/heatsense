@@ -1319,12 +1319,48 @@ export async function loadCityBoundariesGeoJSON(): Promise<boolean> {
       }
     }
     boundariesLoaded = true;
+    buildSpatialGridIndex();
     return true;
   } catch (e) {
     console.warn("Failed to load city boundaries GeoJSON:", e);
     return false;
   }
 }
+
+// 2D Spatial Bin Grid Index for constant-time candidate filtering
+const spatialGrid = new Map<string, CityData[]>();
+
+function getSpatialBinKey(lat: number, lon: number): string {
+  const latBin = Math.floor(lat * 2);
+  const lonBin = Math.floor(lon * 2);
+  return `${latBin}:${lonBin}`;
+}
+
+export function buildSpatialGridIndex(): void {
+  spatialGrid.clear();
+  for (const city of CITIES_DATA) {
+    const [minLat, minLon, maxLat, maxLon] = city.bbox;
+    const minLatBin = Math.floor(minLat * 2);
+    const maxLatBin = Math.floor(maxLat * 2);
+    const minLonBin = Math.floor(minLon * 2);
+    const maxLonBin = Math.floor(maxLon * 2);
+
+    for (let r = minLatBin; r <= maxLatBin; r++) {
+      for (let c = minLonBin; c <= maxLonBin; c++) {
+        const key = `${r}:${c}`;
+        let list = spatialGrid.get(key);
+        if (!list) {
+          list = [];
+          spatialGrid.set(key, list);
+        }
+        list.push(city);
+      }
+    }
+  }
+}
+
+// Initialize spatial bin index on load
+buildSpatialGridIndex();
 
 export function findCityById(cityId: string): CityData | undefined {
   return CITIES_DATA.find((city) => city.id === cityId);
@@ -1351,7 +1387,13 @@ export function isPointInPolygon(lon: number, lat: number, polygon: [number, num
 }
 
 export function getCityAtLocation(lat: number, lon: number): CityData | null {
-  for (const city of CITIES_DATA) {
+  const key = getSpatialBinKey(lat, lon);
+  const candidates = spatialGrid.get(key);
+  if (!candidates || candidates.length === 0) {
+    return null;
+  }
+  for (let i = 0; i < candidates.length; i++) {
+    const city = candidates[i];
     if (isCoordInBBox(lat, lon, city.bbox)) {
       if (isPointInPolygon(lon, lat, city.polygonCoordinates)) {
         return city;
@@ -1362,6 +1404,15 @@ export function getCityAtLocation(lat: number, lon: number): CityData | null {
 }
 
 export function getNearestCity(lat: number, lon: number): CityData | null {
+  const key = getSpatialBinKey(lat, lon);
+  const candidates = spatialGrid.get(key);
+  if (candidates && candidates.length > 0) {
+    for (let i = 0; i < candidates.length; i++) {
+      if (isCoordInBBox(lat, lon, candidates[i].bbox)) {
+        return candidates[i];
+      }
+    }
+  }
   for (const city of CITIES_DATA) {
     if (isCoordInBBox(lat, lon, city.bbox)) {
       return city;

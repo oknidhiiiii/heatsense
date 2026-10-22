@@ -73,3 +73,36 @@ def test_boundaries_geojson_and_etag():
         city_data = res_city.json()
         assert city_data["type"] == "Feature"
         assert city_data["properties"]["name"] == "Mumbai"
+
+
+def test_in_memory_lru_cache_bounded():
+    """Verify InMemoryCache enforces max_size and evicts oldest entries."""
+    from heatsense_api.services.cache import InMemoryCache
+
+    test_cache = InMemoryCache(default_ttl_seconds=60, max_size=3)
+    test_cache.set("k1", "v1")
+    test_cache.set("k2", "v2")
+    test_cache.set("k3", "v3")
+
+    assert test_cache.size() == 3
+    assert test_cache.get("k1") == "v1"
+
+    # Adding 4th item should evict k2 (since k1 was accessed most recently)
+    test_cache.set("k4", "v4")
+    assert test_cache.size() == 3
+    assert test_cache.get("k2") is None
+    assert test_cache.get("k1") == "v1"
+    assert test_cache.get("k3") == "v3"
+    assert test_cache.get("k4") == "v4"
+
+
+def test_ckdtree_nearest_cell_lookup():
+    """Verify WeatherGridRepository cKDTree resolves closest coordinate accurately."""
+    from heatsense_api.repositories.weather_grid import WeatherGridRepository
+
+    repo = WeatherGridRepository()
+    # Query Mumbai coordinate
+    cell_id, lat, lon = repo.find_nearest_cell(18.93, 72.83)
+    assert cell_id is not None
+    assert 18.0 <= lat <= 20.0
+    assert 72.0 <= lon <= 74.0

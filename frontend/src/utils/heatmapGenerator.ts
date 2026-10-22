@@ -1,5 +1,5 @@
 /**
- * Adaptive Level of Detail (LOD) Heatmap Generator with Web Worker Offloading and LRU Caching.
+ * Adaptive Level of Detail (LOD) Heatmap Generator with Worker Pool and Object URL Caching.
  * Automatically selects optimal raster dimensions (256, 512, or 1024) based on camera altitude.
  */
 
@@ -7,8 +7,14 @@ import { GridCell, MapGridResponse } from '../types/api';
 import { getTemperatureRgb } from './colorScale';
 import { heatmapLruCache } from './heatmapCache';
 
-let workerInstance: Worker | null = null;
+const POOL_SIZE = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+  ? Math.min(3, Math.max(2, navigator.hardwareConcurrency))
+  : 2;
+
+let workerPool: Worker[] = [];
+let nextWorkerIdx = 0;
 let nextRequestId = 1;
+
 const pendingRequests = new Map<
   string,
   {
@@ -17,69 +23,90 @@ const pendingRequests = new Map<
   }
 >();
 
-function getWorker(): Worker | null {
+// Track latest request sequence to cancel/discard stale responses
+let latestSequence = 0;
+
+function initWorkerPool(): Worker[] {
   if (typeof window === 'undefined' || typeof window.Worker === 'undefined') {
-    return null;
+    return [];
   }
 
-  if (!workerInstance) {
-    try {
-      workerInstance = new Worker(
-        new URL('../workers/heatmap.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
+  if (workerPool.length === 0) {
+    for (let i = 0; i < POOL_SIZE; i++) {
+      try {
+        const worker = new Worker(
+          new URL('../workers/heatmap.worker.ts', import.meta.url),
+          { type: 'module' }
+        );
 
-      workerInstance.onmessage = (event) => {
-        const { id, bitmap, dataUrl, width, height, error } = event.data;
-        const pending = pendingRequests.get(id);
-        if (!pending) return;
+        worker.onmessage = (event) => {
+          const { id, bitmap, dataUrl, width, height, error } = event.data;
+          const pending = pendingRequests.get(id);
+          if (!pending) return;
 
-        pendingRequests.delete(id);
+          pendingRequests.delete(id);
 
-        if (error) {
-          pending.reject(new Error(error));
-          return;
-        }
-
-        if (bitmap) {
-          // Convert ImageBitmap to Data URL on main thread canvas
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(bitmap, 0, 0);
-              const url = canvas.toDataURL();
-              bitmap.close();
-              pending.resolve({ dataUrl: url, width, height });
-              return;
-            }
-          } catch (e) {
-            bitmap.close();
-            pending.reject(e as Error);
+          if (error) {
+            pending.reject(new Error(error));
             return;
           }
-        }
 
-        if (dataUrl) {
-          pending.resolve({ dataUrl, width, height });
-          return;
-        }
+          if (bitmap) {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(bitmap, 0, 0);
+                bitmap.close();
 
-        pending.reject(new Error('Worker returned empty response'));
-      };
+                // Convert to memory-efficient Blob Object URL
+                canvas.toBlob((blob) => {
+                  if (blob) {
+                    const objectUrl = URL.createObjectURL(blob);
+                    pending.resolve({ dataUrl: objectUrl, width, height });
+                  } else {
+                    pending.resolve({ dataUrl: canvas.toDataURL(), width, height });
+                  }
+                }, 'image/png');
+                return;
+              }
+            } catch (e) {
+              bitmap.close();
+              pending.reject(e as Error);
+              return;
+            }
+          }
 
-      workerInstance.onerror = (err) => {
-        console.warn('Heatmap worker error, will fallback to sync generator:', err);
-      };
-    } catch (e) {
-      console.warn('Failed to initialize heatmap worker:', e);
-      workerInstance = null;
+          if (dataUrl) {
+            pending.resolve({ dataUrl, width, height });
+            return;
+          }
+
+          pending.reject(new Error('Worker returned empty response'));
+        };
+
+        worker.onerror = (err) => {
+          console.warn('Heatmap worker error:', err);
+        };
+
+        workerPool.push(worker);
+      } catch (e) {
+        console.warn('Failed to spawn worker:', e);
+      }
     }
   }
 
-  return workerInstance;
+  return workerPool;
+}
+
+function getNextWorker(): Worker | null {
+  const pool = initWorkerPool();
+  if (pool.length === 0) return null;
+  const worker = pool[nextWorkerIdx % pool.length];
+  nextWorkerIdx++;
+  return worker;
 }
 
 /**
@@ -139,39 +166,46 @@ export function generateHeatmapCanvasSync(
   const imgData = coarseCtx.createImageData(cols, rows);
   const data = imgData.data;
   const gridVals = new Float32Array(cols * rows).fill(NaN);
+  const knownPoints: { r: number; c: number; val: number }[] = [];
+
+  const lonSpan = gMaxLon - gMinLon || 1;
+  const latSpan = gMaxLat - gMinLat || 1;
 
   for (const cell of validCells) {
-    const c = Math.round(((cell.longitude - gMinLon) / (gMaxLon - gMinLon || 1)) * (cols - 1));
-    const r = Math.round(((gMaxLat - cell.latitude) / (gMaxLat - gMinLat || 1)) * (rows - 1));
+    const c = Math.round(((cell.longitude - gMinLon) / lonSpan) * (cols - 1));
+    const r = Math.round(((gMaxLat - cell.latitude) / latSpan) * (rows - 1));
     if (c >= 0 && c < cols && r >= 0 && r < rows) {
       gridVals[r * cols + c] = cell.value;
+      knownPoints.push({ r, c, val: cell.value });
     }
   }
+
+  const numKnown = knownPoints.length;
+  const defaultVal = (minT + maxT) / 2;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const idx = r * cols + c;
       let val = gridVals[idx];
       if (isNaN(val)) {
-        let bestDist = Infinity;
-        let bestVal = (minT + maxT) / 2;
-        for (let dr = -3; dr <= 3; dr++) {
-          for (let dc = -3; dc <= 3; dc++) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-              const nVal = gridVals[nr * cols + nc];
-              if (!isNaN(nVal)) {
-                const dist = dr * dr + dc * dc;
-                if (dist < bestDist) {
-                  bestDist = dist;
-                  bestVal = nVal;
-                }
-              }
+        if (numKnown === 0) {
+          val = defaultVal;
+        } else {
+          let bestDist = Infinity;
+          let bestVal = defaultVal;
+          for (let k = 0; k < numKnown; k++) {
+            const kp = knownPoints[k];
+            const dr = r - kp.r;
+            const dc = c - kp.c;
+            const dist = dr * dr + dc * dc;
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestVal = kp.val;
+              if (dist <= 1) break;
             }
           }
+          val = bestVal;
         }
-        val = bestVal;
       }
 
       const [red, green, blue] = getTemperatureRgb(val, minT, maxT);
@@ -222,7 +256,9 @@ export function generateHeatmapCanvasSync(
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.filter = 'blur(4px)';
+  try {
+    ctx.filter = 'blur(4px)';
+  } catch (_) {}
   ctx.drawImage(coarseCanvas, gx, gy, gw, gh);
 
   ctx.restore();
@@ -231,7 +267,7 @@ export function generateHeatmapCanvasSync(
 }
 
 /**
- * Asynchronously generate continuous thermal heatmap with Web Worker and LRU cache.
+ * Asynchronously generate continuous thermal heatmap with Worker Pool, sequence tracking, and LRU cache.
  */
 export async function generateContinuousHeatmapAsync(
   gridData: MapGridResponse,
@@ -254,8 +290,10 @@ export async function generateContinuousHeatmapAsync(
     return cached;
   }
 
-  // 2. Try offloading to Web Worker
-  const worker = getWorker();
+  const currentSeq = ++latestSequence;
+
+  // 2. Offload to Worker Pool
+  const worker = getNextWorker();
   if (worker) {
     try {
       const requestId = `req_${nextRequestId++}`;
@@ -277,6 +315,17 @@ export async function generateContinuousHeatmapAsync(
       });
 
       const result = await promise;
+
+      // Discard if obsolete request
+      if (currentSeq < latestSequence - 2) {
+        if (result.dataUrl.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(result.dataUrl);
+          } catch (_) {}
+        }
+        return null;
+      }
+
       heatmapLruCache.set(cacheKey, {
         dataUrl: result.dataUrl,
         width: result.width,

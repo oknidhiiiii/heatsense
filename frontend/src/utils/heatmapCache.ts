@@ -1,6 +1,6 @@
 /**
  * Client-side Least-Recently-Used (LRU) Memory Cache for Heatmap Raster Textures.
- * Caches rendered Data URLs and canvas dimensions across timeline scrub and layer toggles.
+ * Caches rendered Object URLs with explicit revocation upon eviction to prevent memory leaks.
  */
 
 export interface CachedHeatmap {
@@ -44,11 +44,23 @@ export class HeatmapLruCache {
 
   public set(key: string, value: CachedHeatmap): void {
     if (this.cache.has(key)) {
+      const existing = this.cache.get(key);
+      if (existing && existing.dataUrl !== value.dataUrl && existing.dataUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(existing.dataUrl);
+        } catch (_) {}
+      }
       this.cache.delete(key);
     } else if (this.cache.size >= this.capacity) {
-      // Evict oldest entry (first key in insertion order)
+      // Evict oldest entry and revoke its object URL to free native GPU memory
       const oldestKey = this.cache.keys().next().value;
       if (oldestKey !== undefined) {
+        const evicted = this.cache.get(oldestKey);
+        if (evicted && evicted.dataUrl.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(evicted.dataUrl);
+          } catch (_) {}
+        }
         this.cache.delete(oldestKey);
       }
     }
@@ -60,6 +72,13 @@ export class HeatmapLruCache {
   }
 
   public clear(): void {
+    for (const item of this.cache.values()) {
+      if (item.dataUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(item.dataUrl);
+        } catch (_) {}
+      }
+    }
     this.cache.clear();
   }
 

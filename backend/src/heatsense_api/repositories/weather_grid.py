@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.spatial import cKDTree
 from heatsense_api.config import settings
 from heatsense_api.schemas.weather import (
     CoverageSummary,
@@ -30,6 +31,9 @@ class WeatherGridRepository:
         )
         self._df: Optional[pd.DataFrame] = None
         self._cell_coords: Optional[pd.DataFrame] = None
+        self._kdtree: Optional[cKDTree] = None
+        self._cell_ids: Optional[List[str]] = None
+        self._coords_matrix: Optional[np.ndarray] = None
 
     def _ensure_loaded(self) -> None:
         if self._df is None:
@@ -41,17 +45,23 @@ class WeatherGridRepository:
                 .drop_duplicates()
                 .reset_index(drop=True)
             )
+            coords_arr = self._cell_coords[["latitude", "longitude"]].to_numpy(dtype=np.float64)
+            self._coords_matrix = coords_arr
+            self._cell_ids = self._cell_coords["grid_cell_id"].astype(str).tolist()
+            self._kdtree = cKDTree(coords_arr)
 
     def find_nearest_cell(self, lat: float, lon: float) -> Tuple[str, float, float]:
-        """Find the closest grid cell to the given latitude and longitude."""
+        """Find closest grid cell to given coordinates via compiled cKDTree in microseconds."""
         self._ensure_loaded()
-        assert self._cell_coords is not None
-        dists = (self._cell_coords["latitude"] - lat) ** 2 + (
-            self._cell_coords["longitude"] - lon
-        ) ** 2
-        nearest_idx = dists.idxmin()
-        row = self._cell_coords.iloc[nearest_idx]
-        return str(row["grid_cell_id"]), float(row["latitude"]), float(row["longitude"])
+        assert self._kdtree is not None
+        assert self._cell_ids is not None
+        assert self._coords_matrix is not None
+        _, nearest_idx = self._kdtree.query([lat, lon])
+        return (
+            self._cell_ids[nearest_idx],
+            float(self._coords_matrix[nearest_idx, 0]),
+            float(self._coords_matrix[nearest_idx, 1]),
+        )
 
     def get_history(
         self,

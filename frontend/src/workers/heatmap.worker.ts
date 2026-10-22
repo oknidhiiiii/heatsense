@@ -1,6 +1,6 @@
 /**
  * Dedicated Web Worker for Continuous Heatmap Rasterization and Boundary Stencil Clipping.
- * Offloads heavy bilinear interpolation and polygon ray-containment math from the main thread.
+ * Utilizes reusable OffscreenCanvases and vectorized nearest-neighbor infill for high performance.
  */
 
 import { getTemperatureRgb } from '../utils/colorScale';
@@ -24,6 +24,12 @@ export interface HeatmapWorkerResponse {
   height: number;
   error?: string;
 }
+
+// Reusable canvas contexts to avoid GPU context recreation and GC thrashing
+let coarseCanvas: OffscreenCanvas | null = null;
+let coarseCtx: OffscreenCanvasRenderingContext2D | null = null;
+let mainCanvas: OffscreenCanvas | null = null;
+let mainCtx: OffscreenCanvasRenderingContext2D | null = null;
 
 self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
   const { id, gridData, targetBbox, boundaryPolygons, canvasSize } = event.data;
@@ -61,9 +67,15 @@ self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
     const cols = Math.max(2, Math.min(64, Math.round((gMaxLon - gMinLon) / res) + 1));
     const rows = Math.max(2, Math.min(64, Math.round((gMaxLat - gMinLat) / res) + 1));
 
-    // 2. Coarse grid offscreen canvas
-    const coarseCanvas = new OffscreenCanvas(cols, rows);
-    const coarseCtx = coarseCanvas.getContext('2d');
+    // 2. Reuse coarse canvas
+    if (!coarseCanvas) {
+      coarseCanvas = new OffscreenCanvas(cols, rows);
+      coarseCtx = coarseCanvas.getContext('2d');
+    } else {
+      if (coarseCanvas.width !== cols) coarseCanvas.width = cols;
+      if (coarseCanvas.height !== rows) coarseCanvas.height = rows;
+    }
+
     if (!coarseCtx) {
       self.postMessage({ id, error: 'Failed to create coarse OffscreenCanvas context' });
       return;
@@ -72,40 +84,48 @@ self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
     const imgData = coarseCtx.createImageData(cols, rows);
     const data = imgData.data;
     const gridVals = new Float32Array(cols * rows).fill(NaN);
+    const knownPoints: { r: number; c: number; val: number }[] = [];
+
+    const lonSpan = gMaxLon - gMinLon || 1;
+    const latSpan = gMaxLat - gMinLat || 1;
 
     for (const cell of validCells) {
-      const c = Math.round(((cell.longitude - gMinLon) / (gMaxLon - gMinLon || 1)) * (cols - 1));
-      const r = Math.round(((gMaxLat - cell.latitude) / (gMaxLat - gMinLat || 1)) * (rows - 1));
+      const c = Math.round(((cell.longitude - gMinLon) / lonSpan) * (cols - 1));
+      const r = Math.round(((gMaxLat - cell.latitude) / latSpan) * (rows - 1));
       if (c >= 0 && c < cols && r >= 0 && r < rows) {
         gridVals[r * cols + c] = cell.value;
+        knownPoints.push({ r, c, val: cell.value });
       }
     }
 
-    // Nearest-neighbor fill for unassigned pixels
+    // Fast infill using known points list
+    const numKnown = knownPoints.length;
+    const defaultVal = (minT + maxT) / 2;
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c;
         let val = gridVals[idx];
+
         if (isNaN(val)) {
-          let bestDist = Infinity;
-          let bestVal = (minT + maxT) / 2;
-          for (let dr = -3; dr <= 3; dr++) {
-            for (let dc = -3; dc <= 3; dc++) {
-              const nr = r + dr;
-              const nc = c + dc;
-              if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                const nVal = gridVals[nr * cols + nc];
-                if (!isNaN(nVal)) {
-                  const dist = dr * dr + dc * dc;
-                  if (dist < bestDist) {
-                    bestDist = dist;
-                    bestVal = nVal;
-                  }
-                }
+          if (numKnown === 0) {
+            val = defaultVal;
+          } else {
+            let bestDist = Infinity;
+            let bestVal = defaultVal;
+            for (let k = 0; k < numKnown; k++) {
+              const kp = knownPoints[k];
+              const dr = r - kp.r;
+              const dc = c - kp.c;
+              const dist = dr * dr + dc * dc;
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestVal = kp.val;
+                if (dist <= 1) break; // Early exit on immediate neighbor
               }
             }
+            val = bestVal;
           }
-          val = bestVal;
         }
 
         const [red, green, blue] = getTemperatureRgb(val, minT, maxT);
@@ -119,20 +139,27 @@ self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
 
     coarseCtx.putImageData(imgData, 0, 0);
 
-    // 3. Main smoothed OffscreenCanvas with boundary stencil clipping
+    // 3. Reuse main smoothed OffscreenCanvas
     const width = canvasSize;
     const height = canvasSize;
-    const mainCanvas = new OffscreenCanvas(width, height);
-    const ctx = mainCanvas.getContext('2d');
-    if (!ctx) {
+    if (!mainCanvas) {
+      mainCanvas = new OffscreenCanvas(width, height);
+      mainCtx = mainCanvas.getContext('2d');
+    } else {
+      if (mainCanvas.width !== width) mainCanvas.width = width;
+      if (mainCanvas.height !== height) mainCanvas.height = height;
+    }
+
+    if (!mainCtx) {
       self.postMessage({ id, error: 'Failed to create main OffscreenCanvas context' });
       return;
     }
 
-    ctx.save();
+    mainCtx.clearRect(0, 0, width, height);
+    mainCtx.save();
 
     // Draw clipping stencil path
-    ctx.beginPath();
+    mainCtx.beginPath();
     let hasValidPoly = false;
     for (const poly of boundaryPolygons) {
       if (!poly || poly.length < 3) continue;
@@ -141,35 +168,32 @@ self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
         const x = ((lon - minLon) / (maxLon - minLon)) * width;
         const y = ((maxLat - lat) / (maxLat - minLat)) * height;
         if (i === 0) {
-          ctx.moveTo(x, y);
+          mainCtx.moveTo(x, y);
         } else {
-          ctx.lineTo(x, y);
+          mainCtx.lineTo(x, y);
         }
       }
-      ctx.closePath();
+      mainCtx.closePath();
       hasValidPoly = true;
     }
 
     if (hasValidPoly) {
-      ctx.clip();
+      mainCtx.clip();
     }
 
-    // Bilinear coarse grid drawn with smooth scaling
     const gx = ((gMinLon - minLon) / (maxLon - minLon)) * width;
     const gy = ((maxLat - gMaxLat) / (maxLat - minLat)) * height;
     const gw = ((gMaxLon - gMinLon) / (maxLon - minLon)) * width;
     const gh = ((gMaxLat - gMinLat) / (maxLat - minLat)) * height;
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    mainCtx.imageSmoothingEnabled = true;
+    mainCtx.imageSmoothingQuality = 'high';
     try {
-      ctx.filter = 'blur(4px)';
-    } catch (_) {
-      // Ignore filter if unsupported in current OffscreenCanvas environment
-    }
-    ctx.drawImage(coarseCanvas, gx, gy, gw, gh);
+      mainCtx.filter = 'blur(4px)';
+    } catch (_) {}
+    mainCtx.drawImage(coarseCanvas, gx, gy, gw, gh);
 
-    ctx.restore();
+    mainCtx.restore();
 
     // 4. Transfer output back to main thread
     if (typeof mainCanvas.transferToImageBitmap === 'function') {
@@ -184,7 +208,6 @@ self.onmessage = async (event: MessageEvent<HeatmapWorkerRequest>) => {
         [bitmap]
       );
     } else {
-      // Fallback: convert to blob and dataUrl
       const blob = await mainCanvas.convertToBlob();
       const reader = new FileReader();
       const dataUrl = await new Promise<string>((resolve, reject) => {
