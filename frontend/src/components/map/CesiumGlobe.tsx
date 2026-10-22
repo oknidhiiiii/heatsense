@@ -21,9 +21,10 @@ function createImageryProvider(type: 'osm' | 'dark'): Cesium.ImageryProvider {
     });
   }
   return new Cesium.UrlTemplateImageryProvider({
-    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    maximumLevel: 16,
-    credit: new Cesium.Credit('Tiles © Esri (World Dark Gray)'),
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    maximumLevel: 19,
+    credit: new Cesium.Credit('© CARTO, © OpenStreetMap contributors'),
   });
 }
 
@@ -247,7 +248,8 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const gridDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
   const cityBoundaryDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
-  const cityEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
+  const cityBorderEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
+  const cityLabelEntitiesRef = useRef<Record<string, Cesium.Entity>>({});
   const heatImageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const basemapLayerRef = useRef<Cesium.ImageryLayer | null>(null);
 
@@ -299,8 +301,9 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     viewer.dataSources.add(gridDs);
     gridDataSourceRef.current = gridDs;
 
-    // Create city border entities ONCE to completely avoid recreation and flickering
-    const entitiesCache: Record<string, Cesium.Entity> = {};
+    // Create city border and label entities ONCE to completely avoid recreation and flickering
+    const borderEntitiesCache: Record<string, Cesium.Entity> = {};
+    const labelEntitiesCache: Record<string, Cesium.Entity> = {};
     const isInitialDark = basemap === 'dark';
 
     CITIES_DATA.forEach((city) => {
@@ -310,7 +313,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         cartesianPoints.push(Cesium.Cartesian3.fromDegrees(lon, lat));
       });
 
-      // Sleek polyline border
+      // 1. Sleek polyline border
       const borderEntity = cityDs.entities.add({
         id: `border_${city.id}`,
         properties: {
@@ -326,10 +329,49 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
           clampToGround: true,
         },
       });
+      borderEntitiesCache[city.id] = borderEntity;
 
-      entitiesCache[city.id] = borderEntity;
+      // 2. High-contrast city name label and anchor marker
+      const labelEntity = cityDs.entities.add({
+        id: `label_${city.id}`,
+        position: Cesium.Cartesian3.fromDegrees(city.longitude, city.latitude),
+        properties: {
+          cityId: city.id,
+          cityName: city.name,
+        },
+        point: {
+          pixelSize: 4.5,
+          color: isInitialDark
+            ? Cesium.Color.WHITE.withAlpha(0.85)
+            : Cesium.Color.BLACK.withAlpha(0.75),
+          outlineColor: isInitialDark
+            ? Cesium.Color.BLACK.withAlpha(0.8)
+            : Cesium.Color.WHITE.withAlpha(0.8),
+          outlineWidth: 1.5,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 5000000.0),
+        },
+        label: {
+          text: city.name,
+          font: '600 12px -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif',
+          fillColor: isInitialDark ? Cesium.Color.WHITE : Cesium.Color.BLACK,
+          outlineColor: isInitialDark
+            ? Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.9)')
+            : Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.9)'),
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -7),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 3500000.0),
+          scale: 1.0,
+        },
+      });
+      labelEntitiesCache[city.id] = labelEntity;
     });
-    cityEntitiesRef.current = entitiesCache;
+
+    cityBorderEntitiesRef.current = borderEntitiesCache;
+    cityLabelEntitiesRef.current = labelEntitiesCache;
 
     // Screen-space event handlers for clicking and hovering
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
@@ -339,10 +381,21 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
       let targetCity: CityData | null = null;
       let targetCell: GridCell | null = null;
 
-      // Check geographic coordinates via point-in-polygon
+      // 1. Check if user clicked directly on a city label/point entity
+      const picked = viewer.scene.pick(movement.position);
+      if (Cesium.defined(picked) && picked.id && picked.id.properties) {
+        if (picked.id.properties.cityId) {
+          const cId = picked.id.properties.cityId.getValue();
+          targetCity = findCityById(cId) ?? null;
+        }
+      }
+
+      // 2. If no entity picked directly, check geographic coordinates via point-in-polygon
       const coords = getCartographicFromScreen(viewer, movement.position);
       if (coords) {
-        targetCity = getCityAtLocation(coords.lat, coords.lon);
+        if (!targetCity) {
+          targetCity = getCityAtLocation(coords.lat, coords.lon);
+        }
 
         const currentGrid = gridDataRef.current;
         if (currentGrid && currentGrid.cells) {
@@ -365,7 +418,7 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
         }
       }
 
-      // If clicked inside any city area, fly to it immediately and notify React
+      // If clicked inside any city area or on city label, fly to it immediately and notify React
       if (targetCity) {
         lastFlownLocationIdRef.current = targetCity.id;
         flyToCity(viewer, targetCity);
@@ -386,11 +439,22 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
       let hoveredId: string | null = null;
 
-      const coords = getCartographicFromScreen(viewer, movement.endPosition);
-      if (coords) {
-        const city = getCityAtLocation(coords.lat, coords.lon);
-        if (city) {
-          hoveredId = city.id;
+      // 1. Direct entity pick (e.g. cursor directly over city label or point)
+      const picked = viewer.scene.pick(movement.endPosition);
+      if (Cesium.defined(picked) && picked.id && picked.id.properties) {
+        if (picked.id.properties.cityId) {
+          hoveredId = picked.id.properties.cityId.getValue();
+        }
+      }
+
+      // 2. Check if cursor is anywhere inside the city polygon area
+      if (!hoveredId) {
+        const coords = getCartographicFromScreen(viewer, movement.endPosition);
+        if (coords) {
+          const city = getCityAtLocation(coords.lat, coords.lon);
+          if (city) {
+            hoveredId = city.id;
+          }
         }
       }
 
@@ -413,39 +477,89 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
     };
   }, [onCellSelect, onCityHover, onCitySelect]);
 
-  // 2. Ultra-smooth border update on hover (white in dark mode, black in light mode)
+  // 2. Ultra-smooth border & label update on hover (white in dark mode, black in light mode)
   useEffect(() => {
-    const cache = cityEntitiesRef.current;
-    if (!cache) return;
+    const borders = cityBorderEntitiesRef.current;
+    const labels = cityLabelEntitiesRef.current;
+    if (!borders || !labels) return;
 
     const isDarkMode = basemap === 'dark';
 
     CITIES_DATA.forEach((city) => {
-      const borderEntity = cache[city.id];
-      if (!borderEntity || !borderEntity.polyline) return;
+      const borderEntity = borders[city.id];
+      const labelEntity = labels[city.id];
 
       const isHovered = hoveredCityId === city.id;
       const isSelected = selectedLocation?.id === city.id;
 
-      if (isHovered) {
-        // High-contrast border when hovered: White in Dark mode, Black in Light mode
-        borderEntity.polyline.width = new Cesium.ConstantProperty(3.5);
-        const highlightColor = isDarkMode ? Cesium.Color.WHITE : Cesium.Color.BLACK;
-        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(highlightColor);
-      } else if (isSelected) {
-        // Selected city border
-        borderEntity.polyline.width = new Cesium.ConstantProperty(2.5);
-        const selectedColor = isDarkMode
-          ? Cesium.Color.WHITE.withAlpha(0.85)
-          : Cesium.Color.BLACK.withAlpha(0.85);
-        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(selectedColor);
-      } else {
-        // Subtle resting border
-        borderEntity.polyline.width = new Cesium.ConstantProperty(1.5);
-        const restingColor = isDarkMode
-          ? Cesium.Color.WHITE.withAlpha(0.28)
-          : Cesium.Color.BLACK.withAlpha(0.32);
-        borderEntity.polyline.material = new Cesium.ColorMaterialProperty(restingColor);
+      // Update Border Outline
+      if (borderEntity && borderEntity.polyline) {
+        if (isHovered) {
+          // High-contrast border when hovered: White in Dark mode, Black in Light mode
+          borderEntity.polyline.width = new Cesium.ConstantProperty(3.5);
+          const highlightColor = isDarkMode ? Cesium.Color.WHITE : Cesium.Color.BLACK;
+          borderEntity.polyline.material = new Cesium.ColorMaterialProperty(highlightColor);
+        } else if (isSelected) {
+          // Selected city border
+          borderEntity.polyline.width = new Cesium.ConstantProperty(2.5);
+          const selectedColor = isDarkMode
+            ? Cesium.Color.WHITE.withAlpha(0.85)
+            : Cesium.Color.BLACK.withAlpha(0.85);
+          borderEntity.polyline.material = new Cesium.ColorMaterialProperty(selectedColor);
+        } else {
+          // Subtle resting border
+          borderEntity.polyline.width = new Cesium.ConstantProperty(1.5);
+          const restingColor = isDarkMode
+            ? Cesium.Color.WHITE.withAlpha(0.28)
+            : Cesium.Color.BLACK.withAlpha(0.32);
+          borderEntity.polyline.material = new Cesium.ColorMaterialProperty(restingColor);
+        }
+      }
+
+      // Update City Label & Marker
+      if (labelEntity) {
+        if (labelEntity.label) {
+          if (isHovered) {
+            labelEntity.label.fillColor = new Cesium.ConstantProperty(
+              isDarkMode
+                ? Cesium.Color.fromCssColorString('#00f0ff')
+                : Cesium.Color.fromCssColorString('#0284c7')
+            );
+            labelEntity.label.scale = new Cesium.ConstantProperty(1.25);
+          } else if (isSelected) {
+            labelEntity.label.fillColor = new Cesium.ConstantProperty(
+              isDarkMode ? Cesium.Color.WHITE : Cesium.Color.BLACK
+            );
+            labelEntity.label.scale = new Cesium.ConstantProperty(1.15);
+          } else {
+            labelEntity.label.fillColor = new Cesium.ConstantProperty(
+              isDarkMode ? Cesium.Color.WHITE.withAlpha(0.92) : Cesium.Color.BLACK.withAlpha(0.85)
+            );
+            labelEntity.label.scale = new Cesium.ConstantProperty(1.0);
+          }
+
+          labelEntity.label.outlineColor = new Cesium.ConstantProperty(
+            isDarkMode
+              ? Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.9)')
+              : Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.9)')
+          );
+        }
+
+        if (labelEntity.point) {
+          if (isHovered || isSelected) {
+            labelEntity.point.pixelSize = new Cesium.ConstantProperty(7);
+            labelEntity.point.color = new Cesium.ConstantProperty(
+              isDarkMode
+                ? Cesium.Color.fromCssColorString('#00f0ff')
+                : Cesium.Color.fromCssColorString('#0284c7')
+            );
+          } else {
+            labelEntity.point.pixelSize = new Cesium.ConstantProperty(4.5);
+            labelEntity.point.color = new Cesium.ConstantProperty(
+              isDarkMode ? Cesium.Color.WHITE.withAlpha(0.85) : Cesium.Color.BLACK.withAlpha(0.75)
+            );
+          }
+        }
       }
     });
   }, [hoveredCityId, selectedLocation, basemap]);
