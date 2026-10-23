@@ -2,10 +2,10 @@
 
 ## 1. Model Overview
 - **Model ID:** `heatsense_rf_xgb_24h` and `heatsense_rf_xgb_48h`
-- **Architectures:** Direct Multi-Horizon Estimators (XGBoostRegressor for +24h, RandomForestRegressor for +48h)
+- **Architectures:** Direct Multi-Horizon Estimators (XGBoostRegressor for +24h, XGBoostRegressor for +48h)
 - **Horizons Supported:** +24 Hours and +48 Hours
 - **Target Variable:** 2-metre air temperature ($^\circ C$)
-- **Created:** 2026-10-22T14:05:38.856716+00:00
+- **Created:** 2026-10-23T09:17:32.364650+00:00
 
 ## 2. Intended Use
 - **Geography:** India (Maharashtra Pilot Domain: $18.0^\circ N - 20.5^\circ N$, $72.5^\circ E - 74.5^\circ E$)
@@ -20,15 +20,15 @@
 
 ## 4. Evaluation Metrics (Held-Out Test Set)
 ### +24-Hour Forecast
-- **HeatSense XGBoostRegressor:** MAE = 0.401°C | RMSE = 0.498°C
-- **Diurnal Persistence Baseline:** MAE = 0.441°C | RMSE = 0.543°C
-- **Simple Persistence Baseline:** MAE = 0.367°C | RMSE = 0.461°C
-- **Extreme Heat Subset ($T \ge 32^\circ C$):** MAE = 0.290°C
+- **HeatSense XGBoostRegressor:** MAE = 1.004°C | RMSE = 1.359°C
+- **Diurnal Persistence Baseline:** MAE = 1.117°C | RMSE = 1.627°C
+- **Simple Persistence Baseline:** MAE = 0.904°C | RMSE = 1.354°C
+- **Extreme Heat Subset ($T \ge 32^\circ C$):** MAE = 1.665°C
 
 ### +48-Hour Forecast
-- **HeatSense RandomForestRegressor:** MAE = 0.525°C | RMSE = 0.636°C
-- **Diurnal Persistence Baseline:** MAE = 0.513°C | RMSE = 0.623°C
-- **Simple Persistence Baseline:** MAE = 0.439°C | RMSE = 0.541°C
+- **HeatSense XGBoostRegressor:** MAE = 1.118°C | RMSE = 1.514°C
+- **Diurnal Persistence Baseline:** MAE = 1.229°C | RMSE = 1.771°C
+- **Simple Persistence Baseline:** MAE = 1.101°C | RMSE = 1.607°C
 
 ## 5. Critical Operational Limitations
 1. **Forecast Information Horizon:** Atmospheric models generate predictions without future exogenous solar radiation or synoptic advection observations.

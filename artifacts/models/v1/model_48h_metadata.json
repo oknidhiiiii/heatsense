@@ -2,8 +2,8 @@
   "model_id": "heatsense_rf_xgb_48h",
   "model_version": "v1",
   "horizon_hours": 48,
-  "algorithm": "RandomForestRegressor",
-  "created_at_utc": "2026-10-22T14:06:51.060504+00:00",
+  "algorithm": "XGBoostRegressor",
+  "created_at_utc": "2026-10-23T09:18:48.758704+00:00",
   "target_variable": "temperature_c",
   "target_unit": "degC",
   "feature_columns": [
@@ -41,34 +41,34 @@
   },
   "metrics": {
     "selected_model": {
-      "mae_c": 0.5247,
-      "rmse_c": 0.6357,
-      "bias_c": 0.4608
+      "mae_c": 1.1183,
+      "rmse_c": 1.5137,
+      "bias_c": 0.0132
     },
     "baseline_persistence": {
-      "mae_c": 0.4389,
-      "rmse_c": 0.5414,
-      "bias_c": 0.3009
+      "mae_c": 1.1014,
+      "rmse_c": 1.607,
+      "bias_c": 0.2745
     },
     "baseline_diurnal": {
-      "mae_c": 0.5128,
-      "rmse_c": 0.6229,
-      "bias_c": 0.4535
+      "mae_c": 1.2287,
+      "rmse_c": 1.7708,
+      "bias_c": 0.4266
     },
     "random_forest": {
-      "mae_c": 0.5247,
-      "rmse_c": 0.6357,
-      "bias_c": 0.4608
+      "mae_c": 1.1688,
+      "rmse_c": 1.5647,
+      "bias_c": -0.0989
     },
     "xgboost": {
-      "mae_c": 0.6066,
-      "rmse_c": 0.7098,
-      "bias_c": 0.5754
+      "mae_c": 1.1183,
+      "rmse_c": 1.5137,
+      "bias_c": 0.0132
     },
     "extreme_heat_subset": {
-      "mae_c": 0.6137,
-      "rmse_c": 0.6817,
-      "bias_c": 0.6083
+      "mae_c": 2.1048,
+      "rmse_c": 2.5323,
+      "bias_c": -1.6706
     }
   },
   "limitations": [
