@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HeatSense - ML Lab Practical Coverage Report</title>
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 1.2cm 1.2cm 1.5cm 1.2cm;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 8pt;
+      color: #64748b;
+    }
+    @bottom-left {
+      content: "HeatSense AI Platform: ML Lab Practical Syllabus Mapping";
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 8pt;
+      color: #64748b;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+    font-size: 8.5pt;
+    line-height: 1.35;
+  }
+
+  .header {
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    font-size: 16pt;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+    font-weight: 700;
+  }
+
+  .header .subtitle {
+    font-size: 9.5pt;
+    color: #475569;
+    margin: 0;
+  }
+
+  .summary-grid {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+
+  .card {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    text-align: center;
+  }
+
+  .card .num {
+    font-size: 14pt;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .card .label {
+    font-size: 7pt;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  .num-blue { color: #0284c7; }
+  .num-green { color: #16a34a; }
+  .num-amber { color: #d97706; }
+  .num-slate { color: #dc2626; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-size: 8pt;
+  }
+
+  th {
+    background-color: #0f172a;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 7.5pt;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: 1px solid #0f172a;
+  }
+
+  td {
+    padding: 5px 8px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 7pt;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .badge-yes { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-partial { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+  .badge-no { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+  .badge-present { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+  .badge-possible { background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .badge-incompatible { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  .module-title {
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .notes-section {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: #f1f5f9;
+    border-left: 3px solid #0284c7;
+    border-radius: 4px;
+    font-size: 7.5pt;
+  }
+
+  .notes-section h3 {
+    margin: 0 0 4px 0;
+    font-size: 8.5pt;
+    color: #0f172a;
+  }
+
+  .notes-section ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+
+  .notes-section li {
+    margin-bottom: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Machine Learning Lab: Practical Syllabus Coverage Report</h1>
+  <div class="subtitle">Platform: <strong>HeatSense</strong> (Global Heatwave Map and Prediction System) &bull; Comprehensive Syllabus Audit &bull; Generated: October 2026</div>
+</div>
+
+<div class="summary-grid">
+  <div class="card">
+    <div class="num num-blue">34</div>
+    <div class="label">Total Topics Audited</div>
+  </div>
+  <div class="card">
+    <div class="num num-green">13 (38%)</div>
+    <div class="label">Currently Implemented</div>
+  </div>
+  <div class="card">
+    <div class="num num-amber">17 (50%)</div>
+    <div class="label">Feasible to Add</div>
+  </div>
+  <div class="card">
+    <div class="num num-slate">4 (12%)</div>
+    <div class="label">Domain Incompatible</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 17%;">Practical & Module</th>
+      <th style="width: 25%;">Specific Concept / Technique</th>
+      <th style="width: 10%; text-align: center;">Covered?</th>
+      <th style="width: 13%; text-align: center;">Feasibility</th>
+      <th style="width: 35%;">Project Context & Technical Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="6"><span class="module-title">Prac 1A: Data Preprocessing</span><br><small style="color:#64748b;">Tabular data quality & inspection</small></td>
+      <td>Pandas dataset loading (`read_parquet`, `DataFrame`)</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Loads 2.38M ERA5 reanalysis rows via fast PyArrow Parquet backend.</td>
+    </tr>
+    <tr>
+      <td>DataFrame inspection (`head()`, `shape`, `info()`, `dtypes`)</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Implemented in `validate_weather_dataframe` and dataset ingestion scripts.</td>
+    </tr>
+    <tr>
+      <td>Missing value detection & data cleaning</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Validates 100% completeness; verifies physical bounds (-10 deg C to 65 deg C).</td>
+    </tr>
+    <tr>
+      <td>Missing-value treatment & imputation</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Applies spatial nearest-neighbor interpolation and forward temporal fill.</td>
+    </tr>
+    <tr>
+      <td>Handling text/sentinel values (`?`, `-200`)</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-incompatible">Not Feasible</span></td>
+      <td>ERA5 arrives as IEEE 754 floats. Inserting string sentinels breaks Parquet schema.</td>
+    </tr>
+    <tr>
+      <td>Exploratory Data Analysis (EDA)</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Summary statistics, temporal aggregations, and spatial boundary validations.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="4"><span class="module-title">Prac 1B: Encoding & Scaling</span><br><small style="color:#64748b;">Feature transformations</small></td>
+      <td>Numerical vs categorical features</td>
+      <td style="text-align: center;"><span class="badge badge-partial">Partial</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Atmospheric features are numerical; categorical terrain/state labels can be added.</td>
+    </tr>
+    <tr>
+      <td>Label, Ordinal, and One-Hot encoding</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can encode IMD alert tiers (0: Green to 3: Red) and seasons (Winter, Monsoon).</td>
+    </tr>
+    <tr>
+      <td>Binary target encoding</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can binarize temperature into Heatwave Warning (1 if T &gt;= 40 deg C, 0 otherwise).</td>
+    </tr>
+    <tr>
+      <td>StandardScaler & MinMaxScaler</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can normalize solar radiation, temperature, and wind speed for linear models.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="5"><span class="module-title">Prac 2: Linear Regression</span><br><small style="color:#64748b;">Continuous forecasting</small></td>
+      <td>Target variable distribution & line plots</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Time series visualizations rendered dynamically in frontend HistoryChart.</td>
+    </tr>
+    <tr>
+      <td>Simple & Multiple Linear Regression</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can fit ordinary least squares equations predicting temperature from solar flux.</td>
+    </tr>
+    <tr>
+      <td>Model coefficients and intercept</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can report physical regression weights for baseline comparisons.</td>
+    </tr>
+    <tr>
+      <td>Train/Test dataset splitting</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Strictly chronological split (70% train, 15% val, 15% test) avoiding future data leakage.</td>
+    </tr>
+    <tr>
+      <td>Regression predictions & evaluation</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Direct multi-horizon evaluation using MAE, RMSE, and bias across +24h and +48h.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="5"><span class="module-title">Prac 3: Classification</span><br><small style="color:#64748b;">Supervised alert categorization</small></td>
+      <td>Binary & multiclass classification</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can predict discrete hazard warning levels (Normal, Yellow, Orange, Red Alert).</td>
+    </tr>
+    <tr>
+      <td>Logistic Regression</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can compute logistic probability of heatwave occurrence across grid cells.</td>
+    </tr>
+    <tr>
+      <td>K-Nearest Neighbors (KNN) Classifier</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can classify regional heatwave risk using nearest meteorological neighbors.</td>
+    </tr>
+    <tr>
+      <td>Gaussian Naive Bayes</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can calculate posterior heatwave likelihoods from atmospheric priors.</td>
+    </tr>
+    <tr>
+      <td>Precision, Recall, F1, Confusion Matrix</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can evaluate false alarm rates and detection recall for heat advisories.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="3"><span class="module-title">Prac 4: K-Means Clustering</span><br><small style="color:#64748b;">Unsupervised grouping</small></td>
+      <td>Spatial & climate clustering</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can group 546 cells into microclimate regimes using thermal and humidity profiles.</td>
+    </tr>
+    <tr>
+      <td>Centroid initialization & Euclidean distance</td>
+      <td style="text-align: center;"><span class="badge badge-partial">Partial</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Euclidean lookup is used in backend cKDTree; centroid updates can be added via K-Means.</td>
+    </tr>
+    <tr>
+      <td>Iterative clustering & convergence</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can segment seasonal temperature patterns into distinct cluster centroids.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="5"><span class="module-title">Prac 5: Advanced Clustering & PCA</span><br><small style="color:#64748b;">Dimensionality reduction & GMM</small></td>
+      <td>Derived features creation</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>21 causal features created: lags (1h, 24h), rolling min/max/mean/std, diurnal sin/cos, wind speed.</td>
+    </tr>
+    <tr>
+      <td>Principal Component Analysis (PCA)</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can project 21 lag features into PC1 and PC2, computing explained variance ratio.</td>
+    </tr>
+    <tr>
+      <td>Silhouette score evaluation (K=3, 4, 5)</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can evaluate cluster cohesion and separation for microclimate zoning.</td>
+    </tr>
+    <tr>
+      <td>Gaussian Mixture Models (GMM) & EM</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can generate soft probabilistic memberships for transitional coastal/inland zones.</td>
+    </tr>
+    <tr>
+      <td>Customer/Marketing domain attributes</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-incompatible">Not Feasible</span></td>
+      <td>Non-climate variables (income, customer age) do not fit physical weather physics.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="2"><span class="module-title">Bagging Task 1: Bagging</span><br><small style="color:#64748b;">Ensemble classification</small></td>
+      <td>BaggingClassifier & bootstrap sampling</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can train BaggingClassifier with Decision Tree base estimators on heatwave alerts.</td>
+    </tr>
+    <tr>
+      <td>Estimator count vs accuracy benchmarking</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can benchmark accuracy across 5, 10, 50, and 100 base tree estimators.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="3"><span class="module-title">Prac 6A: Class Imbalance</span><br><small style="color:#64748b;">Skewed target distributions</small></td>
+      <td>Class imbalance in rare extreme events</td>
+      <td style="text-align: center;"><span class="badge badge-partial">Partial</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Analyzed via Extreme Heat Subset (T &gt;= 32 deg C); formal class imbalance tuning feasible.</td>
+    </tr>
+    <tr>
+      <td>Minority class weighting (`class_weight=balanced`)</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can compensate for rare heatwave days (~5% of data) using balanced loss penalties.</td>
+    </tr>
+    <tr>
+      <td>Decision Tree & Random Forest Classifiers</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can train tree classifiers alongside the existing Random Forest Regressor.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="5"><span class="module-title">Prac 6B: Advanced Regression</span><br><small style="color:#64748b;">Ensemble regression architectures</small></td>
+      <td>Random Forest Regressor</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Trained in ml/src/heatsense_ml/models/regressors.py (80 trees, depth 12).</td>
+    </tr>
+    <tr>
+      <td>Support Vector Regression (SVR)</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can fit an SVR model with RBF kernel on standardized meteorological inputs.</td>
+    </tr>
+    <tr>
+      <td>KNN Regressor & Bagging Regressor</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can train KNN Regressor and Bagging Regressor as candidate baselines.</td>
+    </tr>
+    <tr>
+      <td>MAE and RMSE evaluation</td>
+      <td style="text-align: center;"><span class="badge badge-yes">Yes</span></td>
+      <td style="text-align: center;"><span class="badge badge-present">Already Present</span></td>
+      <td>Evaluated on held-out test data (+24h MAE = 1.004 deg C, +48h MAE = 1.118 deg C).</td>
+    </tr>
+    <tr>
+      <td>MSE and R-squared (R2) score</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can append MSE and R2 to compute_metrics() utility with one function call.</td>
+    </tr>
+
+    <tr>
+      <td rowspan="4"><span class="module-title">Prac 7: CV & Hyperparameters</span><br><small style="color:#64748b;">Tuning & optimization</small></td>
+      <td>Random-shuffle K-Fold & Stratified K-Fold</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-incompatible">Not Feasible</span></td>
+      <td>Random temporal shuffling causes future data leakage. (Must use TimeSeriesSplit).</td>
+    </tr>
+    <tr>
+      <td>Time-series forward-chaining CV</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can implement TimeSeriesSplit (rolling forward-chaining evaluation folds).</td>
+    </tr>
+    <tr>
+      <td>GridSearchCV & RandomizedSearchCV</td>
+      <td style="text-align: center;"><span class="badge badge-no">No</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Can optimize n_estimators, max_depth, and min_samples_split for XGBoost and RF.</td>
+    </tr>
+    <tr>
+      <td>Feature importance ranking</td>
+      <td style="text-align: center;"><span class="badge badge-partial">Partial</span></td>
+      <td style="text-align: center;"><span class="badge badge-possible">Possible to Add</span></td>
+      <td>Computed by tree models; can be extracted, plotted, and exposed in API responses.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="notes-section">
+  <h3>Summary of Incompatible Constraints</h3>
+  <ul>
+    <li><strong>Temporal Causality vs Random K-Fold:</strong> Standard random shuffle cross-validation cannot be applied to atmospheric time series because shuffling mixes future data into past training windows, violating causality. Use TimeSeriesSplit or blocked chronological folds instead.</li>
+    <li><strong>IEEE Float32 Parquet vs Text Sentinels:</strong> Atmospheric reanalysis utilizes standardized numeric IEEE floats and NaNs. Injecting artificial string sentinels (`?`) corrupts PyArrow binary Parquet schemas.</li>
+    <li><strong>Domain Specific Attributes:</strong> Homework datasets from banking (fraud tokens), retail (customer demographics), or medical labs (insulin levels) cannot be fabricated into a physical climate intelligence system, though their underlying ML algorithms are fully compatible.</li>
+  </ul>
+</div>
+
+</body>
+</html>
