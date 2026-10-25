@@ -1,0 +1,329 @@
+{
+  "status": "SUCCESS",
+  "target_variable": "target_24h",
+  "heatwave_threshold_c": 40.0,
+  "threshold_metadata": {
+    "absolute_threshold_c": 40.0,
+    "percentile": 90.0,
+    "percentile_value_c": 34.4,
+    "min_temp_c": 7.4,
+    "max_temp_c": 44.6,
+    "mean_temp_c": 26.29
+  },
+  "class_distributions": {
+    "training_set": {
+      "total_samples": 36485,
+      "normal_samples": 32829,
+      "heatwave_samples": 3656,
+      "normal_percentage": 89.98,
+      "heatwave_percentage": 10.02,
+      "imbalance_ratio": 8.98,
+      "is_imbalanced": true,
+      "class_labels": {
+        "0": "Normal",
+        "1": "Heatwave"
+      }
+    },
+    "test_set": {
+      "total_samples": 14674,
+      "normal_samples": 14583,
+      "heatwave_samples": 91,
+      "normal_percentage": 99.38,
+      "heatwave_percentage": 0.62,
+      "imbalance_ratio": 160.25,
+      "is_imbalanced": true,
+      "class_labels": {
+        "0": "Normal",
+        "1": "Heatwave"
+      }
+    }
+  },
+  "feature_count": 21,
+  "feature_columns": [
+    "latitude",
+    "longitude",
+    "hour_sin",
+    "hour_cos",
+    "doy_sin",
+    "doy_cos",
+    "temp_lag_0",
+    "temp_lag_1h",
+    "temp_lag_3h",
+    "temp_lag_6h",
+    "temp_lag_12h",
+    "temp_lag_24h",
+    "temp_rolling_mean_24h",
+    "temp_rolling_max_24h",
+    "temp_rolling_min_24h",
+    "dewpoint_lag_0",
+    "dewpoint_lag_6h",
+    "dewpoint_lag_24h",
+    "solar_lag_0",
+    "solar_lag_24h",
+    "wind_speed_lag_0"
+  ],
+  "scaling_applied": "StandardScaler",
+  "model_evaluations": {
+    "LogisticRegression": {
+      "model_name": "LogisticRegression",
+      "accuracy": 0.9567,
+      "balanced_accuracy": 0.9345,
+      "heatwave_precision": 0.1167,
+      "heatwave_recall": 0.9121,
+      "heatwave_f1": 0.207,
+      "macro_f1": 0.5924,
+      "weighted_f1": 0.9729,
+      "specificity": 0.9569,
+      "false_alarm_rate": 0.0431,
+      "confusion_matrix": {
+        "true_negatives": 13955,
+        "false_positives": 628,
+        "false_negatives": 8,
+        "true_positives": 83,
+        "raw_matrix": [
+          [
+            13955,
+            628
+          ],
+          [
+            8,
+            83
+          ]
+        ]
+      }
+    },
+    "KNNClassifier": {
+      "model_name": "KNNClassifier",
+      "accuracy": 0.9861,
+      "balanced_accuracy": 0.7309,
+      "heatwave_precision": 0.2161,
+      "heatwave_recall": 0.4725,
+      "heatwave_f1": 0.2966,
+      "macro_f1": 0.6448,
+      "weighted_f1": 0.9887,
+      "specificity": 0.9893,
+      "false_alarm_rate": 0.0107,
+      "confusion_matrix": {
+        "true_negatives": 14427,
+        "false_positives": 156,
+        "false_negatives": 48,
+        "true_positives": 43,
+        "raw_matrix": [
+          [
+            14427,
+            156
+          ],
+          [
+            48,
+            43
+          ]
+        ]
+      }
+    },
+    "GaussianNaiveBayes": {
+      "model_name": "GaussianNaiveBayes",
+      "accuracy": 0.9905,
+      "balanced_accuracy": 0.6949,
+      "heatwave_precision": 0.2975,
+      "heatwave_recall": 0.3956,
+      "heatwave_f1": 0.3396,
+      "macro_f1": 0.6674,
+      "weighted_f1": 0.9911,
+      "specificity": 0.9942,
+      "false_alarm_rate": 0.0058,
+      "confusion_matrix": {
+        "true_negatives": 14498,
+        "false_positives": 85,
+        "false_negatives": 55,
+        "true_positives": 36,
+        "raw_matrix": [
+          [
+            14498,
+            85
+          ],
+          [
+            55,
+            36
+          ]
+        ]
+      }
+    },
+    "DecisionTreeClassifier": {
+      "model_name": "DecisionTreeClassifier",
+      "accuracy": 0.9839,
+      "balanced_accuracy": 0.6698,
+      "heatwave_precision": 0.1531,
+      "heatwave_recall": 0.3516,
+      "heatwave_f1": 0.2133,
+      "macro_f1": 0.6026,
+      "weighted_f1": 0.987,
+      "specificity": 0.9879,
+      "false_alarm_rate": 0.0121,
+      "confusion_matrix": {
+        "true_negatives": 14406,
+        "false_positives": 177,
+        "false_negatives": 59,
+        "true_positives": 32,
+        "raw_matrix": [
+          [
+            14406,
+            177
+          ],
+          [
+            59,
+            32
+          ]
+        ]
+      }
+    },
+    "RandomForestClassifier": {
+      "model_name": "RandomForestClassifier",
+      "accuracy": 0.9844,
+      "balanced_accuracy": 0.8556,
+      "heatwave_precision": 0.2444,
+      "heatwave_recall": 0.7253,
+      "heatwave_f1": 0.3657,
+      "macro_f1": 0.6789,
+      "weighted_f1": 0.9882,
+      "specificity": 0.986,
+      "false_alarm_rate": 0.014,
+      "confusion_matrix": {
+        "true_negatives": 14379,
+        "false_positives": 204,
+        "false_negatives": 25,
+        "true_positives": 66,
+        "raw_matrix": [
+          [
+            14379,
+            204
+          ],
+          [
+            25,
+            66
+          ]
+        ]
+      }
+    },
+    "BaggingClassifier_5": {
+      "model_name": "BaggingClassifier_5",
+      "accuracy": 0.9879,
+      "balanced_accuracy": 0.8246,
+      "heatwave_precision": 0.2899,
+      "heatwave_recall": 0.6593,
+      "heatwave_f1": 0.4027,
+      "macro_f1": 0.6983,
+      "weighted_f1": 0.9902,
+      "specificity": 0.9899,
+      "false_alarm_rate": 0.0101,
+      "confusion_matrix": {
+        "true_negatives": 14436,
+        "false_positives": 147,
+        "false_negatives": 31,
+        "true_positives": 60,
+        "raw_matrix": [
+          [
+            14436,
+            147
+          ],
+          [
+            31,
+            60
+          ]
+        ]
+      }
+    },
+    "BaggingClassifier_10": {
+      "model_name": "BaggingClassifier_10",
+      "accuracy": 0.9889,
+      "balanced_accuracy": 0.7924,
+      "heatwave_precision": 0.3,
+      "heatwave_recall": 0.5934,
+      "heatwave_f1": 0.3985,
+      "macro_f1": 0.6965,
+      "weighted_f1": 0.9907,
+      "specificity": 0.9914,
+      "false_alarm_rate": 0.0086,
+      "confusion_matrix": {
+        "true_negatives": 14457,
+        "false_positives": 126,
+        "false_negatives": 37,
+        "true_positives": 54,
+        "raw_matrix": [
+          [
+            14457,
+            126
+          ],
+          [
+            37,
+            54
+          ]
+        ]
+      }
+    },
+    "BaggingClassifier_50": {
+      "model_name": "BaggingClassifier_50",
+      "accuracy": 0.9909,
+      "balanced_accuracy": 0.7606,
+      "heatwave_precision": 0.3453,
+      "heatwave_recall": 0.5275,
+      "heatwave_f1": 0.4174,
+      "macro_f1": 0.7064,
+      "weighted_f1": 0.9918,
+      "specificity": 0.9938,
+      "false_alarm_rate": 0.0062,
+      "confusion_matrix": {
+        "true_negatives": 14492,
+        "false_positives": 91,
+        "false_negatives": 43,
+        "true_positives": 48,
+        "raw_matrix": [
+          [
+            14492,
+            91
+          ],
+          [
+            43,
+            48
+          ]
+        ]
+      }
+    },
+    "BaggingClassifier_100": {
+      "model_name": "BaggingClassifier_100",
+      "accuracy": 0.9909,
+      "balanced_accuracy": 0.7497,
+      "heatwave_precision": 0.3433,
+      "heatwave_recall": 0.5055,
+      "heatwave_f1": 0.4089,
+      "macro_f1": 0.7022,
+      "weighted_f1": 0.9918,
+      "specificity": 0.994,
+      "false_alarm_rate": 0.006,
+      "confusion_matrix": {
+        "true_negatives": 14495,
+        "false_positives": 88,
+        "false_negatives": 45,
+        "true_positives": 46,
+        "raw_matrix": [
+          [
+            14495,
+            88
+          ],
+          [
+            45,
+            46
+          ]
+        ]
+      }
+    }
+  },
+  "artifact_paths": {
+    "confusion_matrices_plot": "artifacts/classification/figures/heatwave_confusion_matrices.png",
+    "bagging_curves_plot": "artifacts/classification/figures/bagging_estimator_curves.png"
+  },
+  "best_models": {
+    "highest_heatwave_recall": "LogisticRegression",
+    "highest_heatwave_f1": "BaggingClassifier_50",
+    "highest_balanced_accuracy": "LogisticRegression"
+  }
+}

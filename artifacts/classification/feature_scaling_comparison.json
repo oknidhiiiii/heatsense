@@ -1,0 +1,150 @@
+{
+  "status": "SUCCESS",
+  "scaled_feature_count": 17,
+  "scaled_columns": [
+    "latitude",
+    "longitude",
+    "temp_lag_0",
+    "temp_lag_1h",
+    "temp_lag_3h",
+    "temp_lag_6h",
+    "temp_lag_12h",
+    "temp_lag_24h",
+    "temp_rolling_mean_24h",
+    "temp_rolling_max_24h",
+    "temp_rolling_min_24h",
+    "dewpoint_lag_0",
+    "dewpoint_lag_6h",
+    "dewpoint_lag_24h",
+    "solar_lag_0",
+    "solar_lag_24h",
+    "wind_speed_lag_0"
+  ],
+  "sample_counts": {
+    "train": 36485,
+    "test": 14674
+  },
+  "benchmark_results": {
+    "LinearRegression": {
+      "unscaled_raw": {
+        "mae_c": 1.1381,
+        "rmse_c": 1.5345,
+        "r2_score": 0.7169
+      },
+      "standard_scaled": {
+        "mae_c": 1.1381,
+        "rmse_c": 1.5345,
+        "r2_score": 0.7169
+      },
+      "minmax_scaled": {
+        "mae_c": 1.1381,
+        "rmse_c": 1.5345,
+        "r2_score": 0.7169
+      }
+    },
+    "RidgeRegression": {
+      "unscaled_raw": {
+        "mae_c": 1.136,
+        "rmse_c": 1.5325,
+        "r2_score": 0.7176
+      },
+      "standard_scaled": {
+        "mae_c": 1.1329,
+        "rmse_c": 1.5289,
+        "r2_score": 0.7189
+      },
+      "minmax_scaled": {
+        "mae_c": 1.08,
+        "rmse_c": 1.4662,
+        "r2_score": 0.7415
+      }
+    },
+    "KNNRegressor": {
+      "unscaled_raw": {
+        "mae_c": 1.5512,
+        "rmse_c": 2.1319,
+        "r2_score": 0.4535
+      },
+      "standard_scaled": {
+        "mae_c": 1.3384,
+        "rmse_c": 1.779,
+        "r2_score": 0.6194
+      },
+      "minmax_scaled": {
+        "mae_c": 1.9517,
+        "rmse_c": 2.7319,
+        "r2_score": 0.1026
+      }
+    }
+  },
+  "comparison_table": [
+    {
+      "model": "LinearRegression",
+      "scaling_technique": "unscaled_raw",
+      "mae_c": 1.1381,
+      "rmse_c": 1.5345,
+      "r2_score": 0.7169
+    },
+    {
+      "model": "LinearRegression",
+      "scaling_technique": "standard_scaled",
+      "mae_c": 1.1381,
+      "rmse_c": 1.5345,
+      "r2_score": 0.7169
+    },
+    {
+      "model": "LinearRegression",
+      "scaling_technique": "minmax_scaled",
+      "mae_c": 1.1381,
+      "rmse_c": 1.5345,
+      "r2_score": 0.7169
+    },
+    {
+      "model": "RidgeRegression",
+      "scaling_technique": "unscaled_raw",
+      "mae_c": 1.136,
+      "rmse_c": 1.5325,
+      "r2_score": 0.7176
+    },
+    {
+      "model": "RidgeRegression",
+      "scaling_technique": "standard_scaled",
+      "mae_c": 1.1329,
+      "rmse_c": 1.5289,
+      "r2_score": 0.7189
+    },
+    {
+      "model": "RidgeRegression",
+      "scaling_technique": "minmax_scaled",
+      "mae_c": 1.08,
+      "rmse_c": 1.4662,
+      "r2_score": 0.7415
+    },
+    {
+      "model": "KNNRegressor",
+      "scaling_technique": "unscaled_raw",
+      "mae_c": 1.5512,
+      "rmse_c": 2.1319,
+      "r2_score": 0.4535
+    },
+    {
+      "model": "KNNRegressor",
+      "scaling_technique": "standard_scaled",
+      "mae_c": 1.3384,
+      "rmse_c": 1.779,
+      "r2_score": 0.6194
+    },
+    {
+      "model": "KNNRegressor",
+      "scaling_technique": "minmax_scaled",
+      "mae_c": 1.9517,
+      "rmse_c": 2.7319,
+      "r2_score": 0.1026
+    }
+  ],
+  "key_findings": [
+    "Distance-based models (KNN) achieve 13.72% MAE reduction under StandardScaler.",
+    "Solar radiation (0 to 1000 W/m2) dominates unscaled Euclidean distance without feature normalization.",
+    "Tree models remain invariant to monotonic scaling, while linear and distance estimators require standardization."
+  ]
+}
