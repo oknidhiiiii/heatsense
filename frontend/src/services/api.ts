@@ -14,7 +14,7 @@ import {
   ApiError,
 } from '../types/api';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export class ApiClientError extends Error {
   code: string;
@@ -37,6 +37,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       ...options,
       headers: {
         'Accept': 'application/json',
+        'ngrok-skip-browser-warning': '1',
         ...(options.headers || {}),
       },
     });
