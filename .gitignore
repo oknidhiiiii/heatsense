@@ -52,3 +52,13 @@ Thumbs.db
 *.swo
 .vscode/
 .idea/
+
+# Local development, test suites, and internal prompts (not needed for online deployment)
+prompts/
+templates/
+docs/
+tests/
+scripts/
+CONTENTS.md
+*.pdf
+

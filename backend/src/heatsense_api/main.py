@@ -109,6 +109,16 @@ def create_app() -> FastAPI:
     app.include_router(models_router, prefix=settings.api_prefix)
     app.include_router(weather_router, prefix=settings.api_prefix)
 
+    # Mount static frontend SPA if distribution exists (enables single-container online deployment)
+    import os
+    from fastapi.staticfiles import StaticFiles
+
+    for dist_candidate in ["frontend_dist", "/app/frontend_dist", "frontend/dist"]:
+        if os.path.isdir(dist_candidate):
+            app.mount("/", StaticFiles(directory=dist_candidate, html=True), name="frontend-static")
+            logger.info("Serving static frontend SPA from %s", dist_candidate)
+            break
+
     return app
 
 
