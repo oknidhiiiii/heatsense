@@ -10,6 +10,7 @@ import {
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { HistoricalPoint, HistoricalResponse } from '../../types/api';
 import { api } from '../../services/api';
+import { formatToIST } from '../../utils/timeFormat';
 
 interface HistoryChartProps {
   latitude: number;
@@ -67,17 +68,22 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
     );
   }
 
-  const chartData = history.points.map((p: HistoricalPoint) => ({
-    time: p.timestamp.slice(11, 16),
-    date: p.timestamp.slice(5, 10),
-    temp: p.value,
-  }));
+  const chartData = history.points.map((p: HistoricalPoint) => {
+    const ist = formatToIST(p.timestamp);
+    return {
+      time: ist.timeIST,
+      date: ist.shortDate,
+      fullDateTime: ist.fullDateTimeIST,
+      temp: p.value,
+    };
+  });
 
   const temps = history.points.map((p) => p.value);
   const latestTemp = temps[temps.length - 1];
   const minTemp = Math.min(...temps);
   const maxTemp = Math.max(...temps);
   const meanTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
+  const latestIST = formatToIST(history.coverage.end_time);
 
   return (
     <div className={`apple-place-card ${isCollapsed ? 'collapsed' : ''}`}>
@@ -97,7 +103,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
           <div className="place-location-row">
             <h3 className="place-title">{locationName}</h3>
             <span className="place-sub">
-              {latitude.toFixed(2)}°N, {longitude.toFixed(2)}°E
+              {latitude.toFixed(2)}°N, {longitude.toFixed(2)}°E · {latestIST.fullDateTimeIST}
             </span>
           </div>
 
@@ -169,11 +175,11 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
                     color: '#f8fafc',
                   }}
                   formatter={(val: number) => [`${val.toFixed(2)} °C`, 'Temperature']}
-                  labelFormatter={(label, payload) => {
+                  labelFormatter={(_label, payload) => {
                     if (payload && payload.length > 0) {
-                      return `${payload[0].payload.date} at ${payload[0].payload.time} UTC`;
+                      return payload[0].payload.fullDateTime;
                     }
-                    return label;
+                    return '';
                   }}
                 />
                 <Area

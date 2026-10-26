@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, RotateCcw, BarChart2, Layers } from 'lucide-react';
+import { Search, RotateCcw, BarChart2, Layers, Clock } from 'lucide-react';
 import { LocationItem, LayerType, HealthResponse } from '../../types/api';
 import { api } from '../../services/api';
 import { CITIES_DATA } from '../../utils/cityBoundaries';
+import { getCurrentISTClock } from '../../utils/timeFormat';
 
 interface HeaderProps {
   health: HealthResponse | null;
@@ -29,10 +30,18 @@ export const Header: React.FC<HeaderProps> = ({
   hoveredCityId,
   onCityHover,
 }) => {
+  const [istClock, setIstClock] = useState(() => getCurrentISTClock());
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<LocationItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIstClock(getCurrentISTClock());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -84,11 +93,17 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="island-brand-row">
           <div className="brand-badge-group">
             <span className="brand-wordmark">HeatSense</span>
-            <span className="brand-dot-live" title="Inference Engine Active" />
+            <span
+              className={`brand-dot-live ${health?.status === 'ok' ? 'online' : ''}`}
+              title={health?.model_loaded ? 'Inference Engine Active (AI Ready)' : 'HeatSense Online'}
+            />
           </div>
-          {health?.model_loaded && (
-            <span className="ml-status-text">AI Pilot Active</span>
-          )}
+          <div className="ist-live-clock-badge" title="Indian Standard Time (UTC+05:30)">
+            <Clock size={11} className="clock-icon" />
+            <span className="clock-date">{istClock.fullDate}</span>
+            <span className="clock-sep">•</span>
+            <span className="clock-time">{istClock.timeString}</span>
+          </div>
         </div>
 
         <div className="search-bar-pill">
@@ -156,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             All Cities
           </button>
-          {CITIES_DATA.map((city) => (
+          {CITIES_DATA.filter((city) => city.tier <= 2).map((city) => (
             <button
               key={city.id}
               className={`pill-item ${selectedLocation?.id === city.id ? 'selected' : ''} ${

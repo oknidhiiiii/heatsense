@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { ModelMetric } from '../../types/api';
 import { api } from '../../services/api';
+import { formatToIST } from '../../utils/timeFormat';
 
 interface MetricsModalProps {
   isOpen: boolean;
@@ -98,7 +99,7 @@ export const MetricsModal: React.FC<MetricsModalProps> = ({ isOpen, onClose }) =
                             : 'N/A'}
                         </td>
                         <td className="date-font">
-                          {m.test_start.slice(0, 10)} to {m.test_end.slice(0, 10)}
+                          {formatToIST(m.test_start).shortDate} to {formatToIST(m.test_end).shortDate}
                         </td>
                       </tr>
                     ))}

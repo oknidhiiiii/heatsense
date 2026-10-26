@@ -143,6 +143,44 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+.ist-live-clock-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  letter-spacing: 0.01em;
+}
+
+.ist-live-clock-badge .clock-icon {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.ist-live-clock-badge .clock-date {
+  color: #f1f5f9;
+}
+
+.ist-live-clock-badge .clock-sep {
+  color: #64748b;
+  font-size: 0.65rem;
+}
+
+.ist-live-clock-badge .clock-time {
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.spec-grid-lux .spec-cell.full-width {
+  grid-column: 1 / -1;
+}
+
 /* Search Bar Pill */
 .search-bar-pill {
   position: relative;

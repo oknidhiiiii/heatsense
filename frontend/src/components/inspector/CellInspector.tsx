@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Thermometer, MapPin } from 'lucide-react';
 import { GridCell, LayerType, MapGridResponse } from '../../types/api';
 import { getTemperatureHex } from '../../utils/colorScale';
+import { formatToIST } from '../../utils/timeFormat';
 
 interface CellInspectorProps {
   cell: GridCell | null;
@@ -86,6 +87,12 @@ export const CellInspector: React.FC<CellInspectorProps> = ({
             <span className="spec-k">Data Quality</span>
             <span className="spec-v">Verified Nominal</span>
           </div>
+          {gridData?.valid_at && (
+            <div className="spec-cell full-width">
+              <span className="spec-k">Observation Time (IST)</span>
+              <span className="spec-v">{formatToIST(gridData.valid_at).fullDateTimeIST}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

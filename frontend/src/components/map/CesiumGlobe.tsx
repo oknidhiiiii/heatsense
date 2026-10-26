@@ -231,6 +231,10 @@ export const CesiumGlobe: React.FC<CesiumGlobeProps> = ({
             ? Cesium.Color.WHITE.withAlpha(0.28)
             : Cesium.Color.BLACK.withAlpha(0.32),
           clampToGround: true,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+            0.0,
+            isTier1 ? 5500000.0 : isTier2 ? 2500000.0 : 1200000.0
+          ),
         },
       });
       borderEntitiesCache[city.id] = borderEntity;
